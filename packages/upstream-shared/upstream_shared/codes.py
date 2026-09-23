@@ -73,3 +73,21 @@ FLOODWATER_PATHOGEN_MIX: dict[PathogenClass, float] = {
 
 CLINICAL_RELEVANCE_DAYS = 16  # PRD 6.1 "until about 16 days after exposure"
 SYNDROME_SET = ["acute_gastroenteritis", "fever_after_floodwater_contact"]
+
+# EU Bathing Water Directive 2006/7/EC Annex I, inland waters, the "poor" boundary.
+# A quantitative lab result over this counts as a positive result for FR-21 sign-off;
+# nothing else in the system turns a number into a yes/no, and inventing a private
+# threshold would hide a public-health decision inside the kernel.
+LAB_POSITIVE_THRESHOLD_PER_100ML: dict[ObservationMethod, float] = {
+    ObservationMethod.LAB_ECOLI: 900.0,
+    ObservationMethod.LAB_ENTEROCOCCI: 330.0,
+}
+
+# UCUM spellings we can convert to counts per 100 mL. Anything else fails closed:
+# an unconvertible unit must never be read as "over the limit" (GC-13).
+CFU_PER_100ML_FACTOR: dict[str, float] = {
+    "{CFU}/(100.mL)": 1.0,
+    "{CFU}/mL": 100.0,
+    "{CFU}/dL": 1.0,
+    "{CFU}/L": 0.1,
+}
