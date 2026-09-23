@@ -3,157 +3,17 @@
 Everything here runs on `stream='sim'` so the live catchment's real episodes are
 never touched. The fixtures clean up only the sim rows they created; the event log
 itself is append-only (GC-5) and is never deleted from - event assertions are
-scoped by sequence number instead.
+scoped by sequence number instead. The fixtures themselves live in conftest.py,
+shared with the mission tests.
 """
 from __future__ import annotations
 
 import datetime as dt
 
 import pytest
+from conftest import STREAM
 from upstream_shared.codes import ObservationMethod
 from upstream_shared.events import EventEnvelope, EventType
-from upstream_shared.evidence import EvidencePayload, ObservationResult
-
-STREAM = "sim"
-
-
-# --------------------------------------------------------------------------- helpers
-
-
-@pytest.fixture
-def episodes(_pool, db_conn):
-    """Isolate the sim stream, and give the test a handle on its own episodes."""
-    from upstream_api.config import settings
-
-    def _purge():
-        with db_conn.cursor() as cur:
-            cur.execute("DELETE FROM missions WHERE episode_id IN "
-                        "(SELECT episode_id FROM episodes WHERE stream=%s AND catchment_id=%s)",
-                        (STREAM, settings.catchment_id))
-            cur.execute("DELETE FROM episodes WHERE stream=%s AND catchment_id=%s",
-                        (STREAM, settings.catchment_id))
-
-    _purge()
-    yield
-    _purge()
-
-
-@pytest.fixture
-def seq0(db_conn):
-    """The log's high-water mark before the test, so event counts are scoped to it."""
-    with db_conn.cursor() as cur:
-        cur.execute("SELECT coalesce(max(seq), 0) FROM events")
-        return cur.fetchone()[0]
-
-
-@pytest.fixture
-def emit_posterior(store, episodes):
-    """Append a PosteriorComputed event exactly as the kernel writes it, then consume it."""
-    from upstream_api.config import settings
-    from upstream_api.workflows.episode import on_posterior_computed
-
-    def _emit(p_event: float, zone_windows: dict | None = None, *, fingerprint: str = "fp-test"):
-        env = EventEnvelope(
-            stream=STREAM, catchment_id=settings.catchment_id,
-            event_type=EventType.POSTERIOR_COMPUTED,
-            event_time=dt.datetime.now(dt.UTC),
-            payload={"fingerprint": fingerprint, "p_event": p_event, "as_of_seq": 0,
-                     "top_sources": [], "est_start": [None, None],
-                     "zone_windows": zone_windows or {}, "probe_candidates": []})
-        seq = store.append(env)
-        stored = store.read_from(seq - 1, catchment_id=settings.catchment_id,
-                                 stream=STREAM, limit=1)[0]
-        on_posterior_computed(stored)
-        return stored
-
-    return _emit
-
-
-@pytest.fixture
-def episode_row(db_conn):
-    from upstream_api.config import settings
-
-    cols = ("episode_id", "state", "opened_at", "state_changed_at", "clinical_window_end")
-
-    def _get(episode_id: str | None = None):
-        with db_conn.cursor() as cur:
-            if episode_id:
-                cur.execute(f"SELECT {','.join(cols)} FROM episodes WHERE episode_id=%s",
-                            (episode_id,))
-            else:
-                cur.execute(f"SELECT {','.join(cols)} FROM episodes WHERE stream=%s "
-                            "AND catchment_id=%s ORDER BY opened_at DESC LIMIT 1",
-                            (STREAM, settings.catchment_id))
-            row = cur.fetchone()
-        return dict(zip(cols, row, strict=True)) if row else None
-
-    return _get
-
-
-@pytest.fixture
-def post_evidence(store, a_node):
-    """Append one piece of evidence and return its event id."""
-    from upstream_api.config import settings
-
-    def _post(result: str, *, method=ObservationMethod.FIELD_TEST, value=None, unit=None,
-              days_ago: float = 0.0, node_id: str | None = None) -> str:
-        payload = EvidencePayload(
-            node_id=node_id or a_node, method=method, result=ObservationResult(result),
-            value=value, unit=unit, observer_id="off-1", observer_type="officer",
-            snap_distance_m=0.0)
-        env = EventEnvelope(
-            stream=STREAM, catchment_id=settings.catchment_id,
-            event_type=EventType.EVIDENCE_RECORDED,
-            event_time=dt.datetime.now(dt.UTC) - dt.timedelta(days=days_ago),
-            payload=payload.model_dump(mode="json"))
-        store.append(env)
-        return str(env.event_id)
-
-    return _post
-
-
-@pytest.fixture
-def events_since(db_conn, seq0):
-    def _q(event_type: str, episode_id: str | None = None) -> list[dict]:
-        sql = "SELECT payload FROM events WHERE seq > %s AND event_type=%s"
-        args: list = [seq0, event_type]
-        if episode_id:
-            sql += " AND payload->>'episode_id' = %s"
-            args.append(episode_id)
-        with db_conn.cursor() as cur:
-            cur.execute(sql + " ORDER BY seq", args)
-            return [r[0] for r in cur.fetchall()]
-
-    return _q
-
-
-@pytest.fixture
-def fast_clock(db_conn):
-    """Make time appear to pass by moving the deadlines back, not the clock forward.
-
-    The durable timer sleeps for 16 days (FR-22) and no test can wait for it. Patching
-    the clock forward was the obvious alternative and it is wrong: every event the
-    transition writes would then be stamped in the future, which FR-5 rejects outright
-    - correctly, because a real system's clock never jumps. Ageing the episode instead
-    puts the sweep in exactly the state it would be in on the day, and every event it
-    writes still carries a truthful `event_time`.
-    """
-    import upstream_api.workflows.episode as ep
-    from upstream_api.config import settings
-
-    class _Clock:
-        def advance(self, **kw):
-            delta = dt.timedelta(**kw)
-            with db_conn.cursor() as cur:
-                cur.execute("UPDATE episodes SET opened_at=opened_at-%s, "
-                            "state_changed_at=state_changed_at-%s, "
-                            "clinical_window_end=clinical_window_end-%s "
-                            "WHERE stream=%s AND catchment_id=%s",
-                            (delta, delta, delta, STREAM, settings.catchment_id))
-            ep.resolve_due_episodes()
-
-    return _Clock()
-
 
 # --------------------------------------------------------------------------- tests
 

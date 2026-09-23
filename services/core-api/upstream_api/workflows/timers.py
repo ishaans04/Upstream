@@ -69,8 +69,10 @@ def start(workflow, *args) -> bool:
 def sweep_due(now=None) -> dict[str, int]:
     """Run every deadline that has come due, from the database alone.
 
-    Imported lazily so this module stays free of a cycle: episode.py imports `timers`.
+    Imported lazily so this module stays free of a cycle: episode.py and missions.py
+    both import `timers`.
     """
-    from . import episode
+    from . import episode, missions
 
-    return {"episodes_resolved": len(episode.resolve_due_episodes(now))}
+    return {"episodes_resolved": len(episode.resolve_due_episodes(now)),
+            "missions_expired": len(missions.expire_due_missions(now))}
