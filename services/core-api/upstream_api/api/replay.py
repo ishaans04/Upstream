@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import datetime as dt
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 
 from ..config import settings
 from ..db import pool
@@ -39,7 +39,7 @@ def replay(at: dt.datetime, stream: str = "live"):
 
 
 @router.get("/replay/timeline")
-def timeline(stream: str = "live", limit: int = 500):
+def timeline(stream: str = "live", limit: int = Query(500, ge=1, le=5000)):
     """Every snapshot's moment and headline probability: the Phase 10 slider's track."""
     with pool.connection() as c, c.cursor() as cur:
         cur.execute("""SELECT ts, p_event, fingerprint FROM posterior_snapshots

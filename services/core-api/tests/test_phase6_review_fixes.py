@@ -377,3 +377,40 @@ def test_a_bioassessment_mission_is_created_only_once_per_episode(an_episode, co
     second = create_bioassessment_mission(an_episode)
     assert first == second
     assert count_missions(an_episode) == 1
+
+
+# ------------------------------------------------------- operational: writes and bounds
+
+
+def test_the_episode_summary_does_not_store_the_full_exposure_curves(
+        emit_posterior, episode_row, db_conn):
+    """The consumer rewrites this row every few seconds for weeks.
+
+    Storing PULSE's 432-step curves per zone means ~25 KB of JSONB rewritten on every
+    posterior - WAL churn and autovacuum pressure for samples the list views strip on
+    read anyway.
+    """
+    now = dt.datetime.now(dt.UTC).timestamp()
+    grid = [now + 300 * i for i in range(432)]
+    emit_posterior(p_event=0.94, zone_windows={
+        "ZONE_000": {"zone_id": "ZONE_000", "window_lo": now, "window_hi": now + 9600,
+                     "p_peak": 0.99, "pathways": ["recreation"],
+                     "t_grid": grid, "p_exposed": [0.5] * len(grid)}})
+    with db_conn.cursor() as cur:
+        cur.execute("SELECT summary, pg_column_size(summary) FROM episodes WHERE episode_id=%s",
+                    (episode_row()["episode_id"],))
+        summary, size = cur.fetchone()
+    zone = summary["zone_windows"]["ZONE_000"]
+    assert "t_grid" not in zone and "p_exposed" not in zone
+    assert zone["window_hi"] > zone["window_lo"] and zone["p_peak"] == pytest.approx(0.99)
+    assert size < 4096, f"summary is {size} bytes"
+
+
+def test_read_endpoints_reject_an_absurd_limit():
+    """An unbounded limit is a free way to ask for the whole table."""
+    from fastapi.testclient import TestClient
+    from upstream_api.main import app
+
+    client = TestClient(app)
+    for path in ("/episodes", "/public-health/episodes", "/replay/timeline"):
+        assert client.get(path, params={"limit": 10**9}).status_code == 422, path

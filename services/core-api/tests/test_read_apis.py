@@ -222,14 +222,21 @@ def test_public_health_view_reports_exposure_windows(an_episode, emit_posterior)
 
 
 @pytest.fixture
-def episode_with_curves(an_episode, emit_posterior):
-    """An episode whose zone windows carry PULSE's full exposure curve, as the kernel writes it."""
+def episode_with_curves(an_episode, emit_posterior, seed_snapshot, _network):
+    """An episode whose belief carries PULSE's full exposure curve, as the kernel writes it.
+
+    Both halves are seeded because they live in different places by design: the snapshot
+    is the belief record and keeps the samples, while `episodes.summary` keeps only the
+    window so the consumer can rewrite it every few seconds cheaply.
+    """
     now = dt.datetime.now(dt.UTC).timestamp()
     grid = [now + 300 * i for i in range(432)]
-    emit_posterior(p_event=0.95, zone_windows={
-        "ZONE_000": {"zone_id": "ZONE_000", "window_lo": now, "window_hi": now + 9600,
-                     "p_peak": 0.99, "pathways": ["recreation"],
-                     "t_grid": grid, "p_exposed": [0.5] * len(grid)}})
+    windows = {"ZONE_000": {"zone_id": "ZONE_000", "window_lo": now, "window_hi": now + 9600,
+                            "p_peak": 0.99, "pathways": ["recreation"],
+                            "t_grid": grid, "p_exposed": [0.5] * len(grid)}}
+    emit_posterior(p_event=0.95, zone_windows=windows)
+    seed_snapshot({"__none__": 0.05, _network.entry_nodes[0]: 0.95}, as_of_seq=10**9,
+                  zone_windows=windows)
     return an_episode
 
 

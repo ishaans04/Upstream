@@ -45,6 +45,12 @@ CLOSED = {EpisodeState.RESOLVED, EpisodeState.REFUTED}
 # fall inside it: a sample taken an hour before the episode opened is what opened it, but
 # a positive from last spring says nothing about today.
 EVIDENCE_HORIZON = dt.timedelta(hours=24)
+
+# PULSE writes its whole exposure curve into every zone window (432 steps per zone on a
+# 24 h horizon). The consumer rewrites `episodes.summary` on every posterior - every few
+# seconds, for the sixteen days an episode stays open - so keeping the samples here is
+# ~25 KB of JSONB churn per write for data every reader strips anyway.
+_CURVE_KEYS = ("t_grid", "p_exposed")
 _COLS = ("episode_id", "catchment_id", "stream", "state", "opened_at", "state_changed_at",
          "clinical_window_end", "latest_fingerprint", "summary")
 
@@ -341,10 +347,13 @@ def _latest_episode(stream: str) -> dict | None:
 
 def _update_summary(episode_id: str, payload: dict) -> None:
     top = (payload.get("top_sources") or [[None]])[0]
+    zone_windows = {zone_id: {k: v for k, v in w.items() if k not in _CURVE_KEYS}
+                    if isinstance(w, dict) else w
+                    for zone_id, w in (payload.get("zone_windows") or {}).items()}
     summary = {"p_event": payload.get("p_event"),
                "top_source": top[0] if isinstance(top, list | tuple) else None,
                "top_sources": payload.get("top_sources") or [],
-               "zone_windows": payload.get("zone_windows") or {}}
+               "zone_windows": zone_windows}
     with pool.connection() as c, c.cursor() as cur:
         cur.execute("UPDATE episodes SET summary=%s, latest_fingerprint=%s WHERE episode_id=%s",
                     (Jsonb(summary), payload.get("fingerprint"), episode_id))

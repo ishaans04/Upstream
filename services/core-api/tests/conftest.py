@@ -389,7 +389,8 @@ def seed_snapshot(db_conn, _network):
     from upstream_api.config import settings
 
     def _seed(marginals: dict, *, probe: list | None = None, as_of_seq: int = 0,
-              ts: dt.datetime | None = None, explanation: dict | None = None):
+              ts: dt.datetime | None = None, explanation: dict | None = None,
+              zone_windows: dict | None = None):
         with db_conn.cursor() as cur:
             cur.execute("""INSERT INTO posterior_snapshots (ts,fingerprint,episode_id,
                 catchment_id,stream,as_of_seq,network_version,kernel_version,params_version,
@@ -397,7 +398,8 @@ def seed_snapshot(db_conn, _network):
                 VALUES (%s,%s,NULL,%s,%s,%s,'net','test','params',%s,%s,%s,%s,%s)""",
                         (ts or dt.datetime.now(dt.UTC), f"sha256:seed-{as_of_seq}",
                          settings.catchment_id, STREAM, as_of_seq,
-                         1.0 - marginals.get("__none__", 0.0), Jsonb(marginals), Jsonb({}),
+                         1.0 - marginals.get("__none__", 0.0), Jsonb(marginals),
+                         Jsonb(zone_windows or {}),
                          Jsonb(probe or []), Jsonb(explanation or {})))
 
     yield _seed

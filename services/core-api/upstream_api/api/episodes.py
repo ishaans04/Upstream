@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import datetime as dt
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
 from ..config import settings
@@ -46,7 +46,7 @@ class SignoffRequestIn(BaseModel):
 
 
 @router.get("/episodes")
-def list_episodes(stream: str = "live", limit: int = 100):
+def list_episodes(stream: str = "live", limit: int = Query(100, ge=1, le=500)):
     with pool.connection() as c, c.cursor() as cur:
         cur.execute("""SELECT episode_id, state, opened_at, state_changed_at,
                               clinical_window_end, summary, latest_fingerprint
@@ -73,7 +73,8 @@ def get_episode(episode_id: str, stream: str = "live"):
         if row is None:
             raise HTTPException(404, f"no such episode: {episode_id}")
         summary = row[8] or {}
-        cur.execute("""SELECT explanation, source_marginals, probe_candidates, ts
+        cur.execute("""SELECT explanation, source_marginals, probe_candidates, ts,
+                              zone_windows
                        FROM posterior_snapshots WHERE catchment_id=%s AND stream=%s
                        ORDER BY ts DESC LIMIT 1""", (settings.catchment_id, row[2]))
         snap = cur.fetchone()
@@ -89,7 +90,9 @@ def get_episode(episode_id: str, stream: str = "live"):
         "state_changed_at": row[4], "est_start_lo": row[5], "est_start_hi": row[6],
         "clinical_window_end": row[7], "p_event": summary.get("p_event"),
         "top_sources": summary.get("top_sources", []),
-        "zone_windows": summary.get("zone_windows", {}),
+        # The full PULSE curves come from the snapshot, which is the belief record;
+        # `episodes.summary` keeps only the window so it is cheap to rewrite.
+        "zone_windows": (snap[4] if snap else None) or summary.get("zone_windows", {}),
         "fingerprint": row[9], "version": row[10],
         "explanation": (snap[0] if snap else {}) or {},
         "source_marginals": (snap[1] if snap else {}) or {},
@@ -125,7 +128,7 @@ def ask_for_signoff(episode_id: str, body: SignoffRequestIn):
 
 
 @router.get("/public-health/episodes")
-def public_health_episodes(stream: str = "live", limit: int = 100):
+def public_health_episodes(stream: str = "live", limit: int = Query(100, ge=1, le=500)):
     """FR-39: the clinical view.
 
     Exposure windows and pathways only. No candidate source, no marginals, no evidence:
