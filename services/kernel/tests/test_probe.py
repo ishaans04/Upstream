@@ -192,3 +192,11 @@ def test_gain_never_exceeds_the_uncertainty_actually_present():
     total = edge_weight(np.exp(c["post"].log_p), cls)
     for cand in _probe(c):
         assert cand["ec2_gain"] <= total + 1e-12
+
+
+def test_expected_effect_never_claims_a_zero_reduction_for_a_positive_gain(ctx):
+    """Rounding a real but small gain to "0%" tells a volunteer their trip is pointless."""
+    for c in _probe(ctx):
+        assert c["ec2_gain"] > 0
+        assert "0%" not in c["expected_effect"]
+        assert "(no measurable reduction" not in c["expected_effect"]

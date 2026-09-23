@@ -147,7 +147,14 @@ def _walk_cost_s(net, origin: int | None, node_idx: int) -> float:
 
 
 def _expected_effect(p, classes, outcomes, net, mode: ProbeMode) -> str:
-    """The sentence the volunteer sees. Every number here is computed, never guessed."""
+    """The sentence the volunteer sees. Every number here is computed, never guessed.
+
+    It has to stay honest when the effect is small. A single visual check against a
+    catchment-wide posterior often cuts well under one percent of the uncertainty, and
+    rounding that to "0%" tells the volunteer their trip is pointless when it is not -
+    so the percentage carries enough precision to stay non-zero, and a genuinely
+    marginal check says so in words instead.
+    """
     before = len(np.unique(classes[p > 0.001]))
     residual = []
     for o in range(outcomes.shape[0]):
@@ -157,5 +164,21 @@ def _expected_effect(p, classes, outcomes, net, mode: ProbeMode) -> str:
     total = 0.5 * (p.sum() ** 2 - float((np.bincount(classes, weights=p) ** 2).sum()))
     cut = ec2_gain(p, classes, outcomes) / max(total, 1e-12)
     noun = "suspect outfalls" if mode is ProbeMode.ENFORCE else "warning patterns"
-    return (f"Expected to rule out about {max(before - after, 0)} of {before} {noun} "
-            f"(cuts {cut:.0%} of the remaining uncertainty).")
+
+    ruled_out = max(before - after, 0)
+    if ruled_out:
+        head = f"Expected to rule out about {ruled_out} of {before} {noun}"
+    else:
+        head = f"Narrows the {before} remaining {noun} without ruling any out yet"
+    return f"{head} ({_percent(cut)} of the remaining uncertainty)."
+
+
+def _percent(x: float) -> str:
+    """Never render a positive quantity as 0%."""
+    if x <= 0:
+        return "no measurable reduction"
+    for places in (0, 1, 2, 3):
+        s = f"{x:.{places}%}"
+        if float(s.rstrip("%")) > 0:
+            return s
+    return "under 0.001%"

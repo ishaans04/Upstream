@@ -103,8 +103,11 @@ class KernelWorker:
                                  flow_idx=flow_idx, kernel_version=KERNEL_VERSION,
                                  stream=self.stream)
         zones = pulse(post, self.net, self.tables, self.params)
+        # The real flow condition, not a default: PROBE refuses to send anyone out in
+        # high flow (PRD 7.5), and that gate is only meaningful if it sees the weather.
         candidates = probe(post, self.net, self.tables, self.params, zones,
-                           now=dt.datetime.now(dt.UTC))
+                           now=dt.datetime.now(dt.UTC),
+                           flow_condition=FLOW_CONDITIONS[flow_idx])
         ex = explain(post, obs, self.net, grid, self.tables, self.params)
         lo, hi = start_time_credible_interval(post, self.net)
         return post, {"zones": zones, "probe": candidates, "explanation": ex,

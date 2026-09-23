@@ -1,0 +1,21 @@
+# Keep the build context small: without this the whole .venv, .git and every
+# compiled artefact is uploaded to the daemon on every build.
+.git/
+.venv/
+**/__pycache__/
+**/*.py[cod]
+.pytest_cache/
+.ruff_cache/
+node_modules/
+web/.next/
+data/artifacts/
+fhir/fsh-generated/
+fhir/output/
+fhir/input-cache/
+bench/results/
+docs/
+*.parquet
+.env
+.env.host
+CLAUDE.md
+changelog.md
