@@ -254,3 +254,23 @@ def test_the_episode_detail_still_carries_the_full_curve_for_plotting(episode_wi
     """The console draws the curve, so the single-episode view keeps it."""
     d = client.get(f"/episodes/{episode_with_curves}", params={"stream": STREAM}).json()
     assert len(d["zone_windows"]["ZONE_000"]["t_grid"]) == 432
+
+
+def test_confirmed_evidence_returns_an_id_that_sign_off_accepts(a_node, an_episode,
+                                                                episode_row):
+    """FR-21 is only reachable from the API if ingestion hands back the event's id.
+
+    The ingest routes returned a sequence number, which sign-off cannot look an event
+    up by, so the documented officer workflow could not actually be performed.
+    """
+    r = client.post("/ingest/report/confirm", json={
+        "node_id": a_node, "observed_at": dt.datetime.now(dt.UTC).isoformat(),
+        "method": "field_test", "result": "positive", "observer_id": "off-1",
+        "observer_type": "officer", "snap_distance_m": 0.0, "oah_codes": []})
+    assert r.status_code == 201
+    event_id = r.json()["event_id"]
+
+    s = client.post(f"/episodes/{an_episode}/signoff",
+                    json={"officer_id": "off-1", "field_result_event_id": event_id})
+    assert s.status_code == 200, s.text
+    assert episode_row(an_episode)["state"] == "CONFIRMED"

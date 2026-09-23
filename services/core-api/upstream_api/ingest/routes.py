@@ -107,7 +107,7 @@ def propose(body: ProposeIn):
 @router.post("/report/confirm", status_code=201)
 def confirm(body: ConfirmIn):
     """FR-1, FR-2, FR-3: record confirmed evidence, positive or negative."""
-    return {"seq": _append_evidence(body)}
+    return _append_evidence(body)
 
 
 @router.post("/lab", status_code=201)
@@ -116,7 +116,7 @@ def lab_result(body: LabIn):
     confirmed = ConfirmIn(**body.model_dump(),
                           result=ObservationResult.QUANTITATIVE,
                           confirmed_by_observer=True)
-    return {"seq": _append_evidence(confirmed)}
+    return _append_evidence(confirmed)
 
 
 @router.post("/retract", status_code=201)
@@ -133,7 +133,7 @@ def retract(body: RetractIn):
                         event_time=dt.datetime.now(dt.UTC),
                         payload=payload.model_dump(),
                         causation_id=causation)
-    return {"seq": store.append(env)}
+    return {"seq": store.append(env), "event_id": str(env.event_id)}
 
 
 class SensorIn(BaseModel):
@@ -214,7 +214,14 @@ def flow_condition(mm_per_h: float) -> str:
     return "dry"
 
 
-def _append_evidence(body: ConfirmIn) -> int:
+def _append_evidence(body: ConfirmIn) -> dict:
+    """Append confirmed evidence and return both of its identities.
+
+    The sequence number orders the log; the event id is what everything downstream
+    refers to a single observation by. Officer sign-off (FR-21) needs the id, so
+    returning only the seq made the documented workflow impossible to perform from
+    the API.
+    """
     try:
         payload = EvidencePayload(**body.model_dump(exclude={"observed_at"}))
     except ValidationError as e:
@@ -226,4 +233,4 @@ def _append_evidence(body: ConfirmIn) -> int:
                             payload=payload.model_dump(mode="json"))
     except ValidationError as e:
         raise HTTPException(422, _validation_detail(e)) from e
-    return store.append(env)
+    return {"seq": store.append(env), "event_id": str(env.event_id)}
