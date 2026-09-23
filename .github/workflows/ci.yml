@@ -27,21 +27,13 @@ jobs:
       - run: uv sync --all-packages --frozen
 
       # The GitHub service container starts from a bare image, so the
-      # docker/postgres/init scripts never run. Apply the parts the tests need.
+      # docker/postgres/init scripts never run. Apply the same file here.
       - name: Bootstrap database extensions and roles
+        env:
+          PGPASSWORD: upstream
         run: |
-          uv run python - <<'PY'
-          import os, psycopg
-          with psycopg.connect(os.environ["DATABASE_URL"], autocommit=True) as c:
-              for stmt in open("docker/postgres/init/00-extensions.sql").read().split(";"):
-                  if stmt.strip():
-                      try:
-                          c.execute(stmt)
-                      except psycopg.errors.DuplicateObject:
-                          pass
-                      except psycopg.errors.DuplicateDatabase:
-                          pass
-          PY
+          psql -h localhost -U upstream -d upstream -v ON_ERROR_STOP=1 \
+            -f docker/postgres/init/00-extensions.sql
 
       - run: uv run ruff check .
       - run: uv run alembic -c db/alembic.ini upgrade head
