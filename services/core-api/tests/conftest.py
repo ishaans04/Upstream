@@ -177,14 +177,16 @@ def emit_posterior(store, episodes):
     from upstream_api.config import settings
     from upstream_api.workflows.episode import on_posterior_computed
 
-    def _emit(p_event: float, zone_windows: dict | None = None, *, fingerprint: str = "fp-test"):
+    def _emit(p_event: float, zone_windows: dict | None = None, *,
+              fingerprint: str = "fp-test", probe_candidates: list | None = None):
         env = EventEnvelope(
             stream=STREAM, catchment_id=settings.catchment_id,
             event_type=EventType.POSTERIOR_COMPUTED,
             event_time=dt.datetime.now(dt.UTC),
             payload={"fingerprint": fingerprint, "p_event": p_event, "as_of_seq": 0,
                      "top_sources": [], "est_start": [None, None],
-                     "zone_windows": zone_windows or {}, "probe_candidates": []})
+                     "zone_windows": zone_windows or {},
+                     "probe_candidates": probe_candidates or []})
         seq = store.append(env)
         stored = store.read_from(seq - 1, catchment_id=settings.catchment_id,
                                  stream=STREAM, limit=1)[0]
@@ -280,7 +282,7 @@ def fast_clock(db_conn):
                             "WHERE episode_id IN (SELECT episode_id FROM episodes "
                             "WHERE stream=%s AND catchment_id=%s)",
                             (delta, delta, delta, STREAM, settings.catchment_id))
-            timers.sweep_due()
+            timers.sweep_due(stream=STREAM)
 
     return _Clock()
 

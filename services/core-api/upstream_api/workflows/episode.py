@@ -39,6 +39,12 @@ from ..eventlog import store
 from . import timers
 
 CLOSED = {EpisodeState.RESOLVED, EpisodeState.REFUTED}
+
+# The kernel builds a posterior from the last 24 h of evidence (worker.HORIZON_HOURS), so
+# that is the window an episode can honestly be said to rest on. Sign-off evidence must
+# fall inside it: a sample taken an hour before the episode opened is what opened it, but
+# a positive from last spring says nothing about today.
+EVIDENCE_HORIZON = dt.timedelta(hours=24)
 _COLS = ("episode_id", "catchment_id", "stream", "state", "opened_at", "state_changed_at",
          "clinical_window_end", "latest_fingerprint", "summary")
 
@@ -65,6 +71,25 @@ def on_posterior_computed(event) -> None:
     if target is not None and EpisodeState(ep["state"]).can_transition_to(target):
         _transition(ep, target, reason=f"p_event={p_event:.3f}", event=event)
     _update_summary(ep["episode_id"], event.payload)
+    _dispatch_missions(ep["episode_id"], event.payload)
+
+
+def _dispatch_missions(episode_id: str, payload: dict) -> None:
+    """FR-15/FR-17: turn this belief's PROBE candidates into missions.
+
+    This is the only place in production that creates the first mission. Without it
+    `create_missions_from_probe` is reachable only from a re-plan, which needs a
+    mission to already exist, so nobody is ever sent anywhere.
+
+    Imported lazily: missions.py reaches back into the episode tables, and the consumer
+    imports this module at startup.
+    """
+    candidates = payload.get("probe_candidates") or []
+    if not candidates or EpisodeState(_episode(episode_id)["state"]) in CLOSED:
+        return
+    from .missions import create_missions_from_probe
+
+    create_missions_from_probe(episode_id, candidates)
 
 
 def _target_state(current: EpisodeState, p_event: float) -> EpisodeState | None:
@@ -118,7 +143,9 @@ def _reopen(ep: dict, event, p_event: float) -> dict:
                      ep["episode_id"]))
     _transition(ep, target, reason=f"reopened on new evidence, p_event={p_event:.3f}",
                 event=event, force=True)
-    timers.start(episode_workflow, settings.catchment_id, ep["episode_id"])
+    # No second workflow: the episode may still have one sleeping from before it closed,
+    # and two timers for one episode means two bioassessment surveys (FR-24). The
+    # deadline sweep covers the new window regardless of which timer is live.
     return _episode(ep["episode_id"])
 
 
@@ -139,19 +166,31 @@ def _clinical_window_end(payload: dict, now: dt.datetime) -> dt.datetime:
 
 
 def _transition(ep: dict, target: EpisodeState, *, reason: str, event=None,
-                force: bool = False) -> None:
+                force: bool = False) -> bool:
+    """Move an episode, once. Returns whether this caller is the one that moved it.
+
+    The update is conditional on the state we read. The consumer, the 300 s sweep and a
+    DBOS workflow can all decide the same transition at the same moment in different
+    processes; an unconditional write lets each of them append its own
+    EpisodeStateChanged, and belief replay then reads a log that says an episode
+    resolved twice.
+    """
     if not force and not EpisodeState(ep["state"]).can_transition_to(target):
         raise PermissionError(f"cannot move from {ep['state']} to {target.value}")
     now = _now()
     with pool.connection() as c, c.cursor() as cur:
         cur.execute("UPDATE episodes SET state=%s, state_changed_at=%s, version=version+1 "
-                    "WHERE episode_id=%s", (target.value, now, ep["episode_id"]))
+                    "WHERE episode_id=%s AND state=%s",
+                    (target.value, now, ep["episode_id"], ep["state"]))
+        if cur.rowcount == 0:
+            return False            # somebody else got there first; say nothing
     store.append(EventEnvelope(
         stream=ep["stream"], catchment_id=settings.catchment_id,
         event_type=EventType.EPISODE_STATE_CHANGED, event_time=now,
         payload={"episode_id": ep["episode_id"], "from": ep["state"],
                  "to": target.value, "reason": reason},
         causation_id=getattr(event, "event_id", None)))
+    return True
 
 
 def force_state(episode_id: str, target: str | EpisodeState) -> None:
@@ -179,9 +218,11 @@ def give_signoff(episode_id: str, officer_id: str, field_result_event_id: str | 
     """FR-21: CONFIRMED needs a positive field/lab result AND an officer."""
     if not officer_id:
         raise ValueError("CONFIRMED requires a named officer")
-    if not field_result_event_id or not _is_positive_result(field_result_event_id):
-        raise ValueError("CONFIRMED requires a positive field or lab result")
     ep = _episode(episode_id)
+    if not field_result_event_id or not _is_positive_result(
+            field_result_event_id, stream=ep["stream"],
+            not_before=ep["opened_at"] - EVIDENCE_HORIZON):
+        raise ValueError("CONFIRMED requires a positive field or lab result")
     if not EpisodeState(ep["state"]).can_transition_to(EpisodeState.CONFIRMED):
         raise PermissionError(f"cannot confirm from {ep['state']}")
     store.append(EventEnvelope(
@@ -192,17 +233,28 @@ def give_signoff(episode_id: str, officer_id: str, field_result_event_id: str | 
     _transition(ep, EpisodeState.CONFIRMED, reason=f"officer {officer_id} signed off")
 
 
-def _is_positive_result(event_id: str) -> bool:
-    """Is this evidence event a positive result that still stands?
+def _is_positive_result(event_id: str, *, stream: str, not_before: dt.datetime) -> bool:
+    """Is this evidence a positive result, for *this* episode, that still stands?
 
-    Fails closed everywhere: an unknown event, a retracted one (GC-5), an unrecognised
-    unit or an analyte with no published limit all return False. Sign-off is the last
-    gate before anything health-facing is published, so "I could not tell" has to mean
-    no.
+    Fails closed everywhere: a malformed id, an unknown event, one from another stream
+    or catchment, one recorded before the episode opened, a retracted one (GC-5), an
+    unrecognised unit or an analyte with no published limit all return False. Sign-off
+    is the last gate before a source is named, so "I could not tell" has to mean no.
+
+    The scoping is not pedantry. Without the stream filter a simulated positive
+    confirms a live episode (GC-10); without the time bound a six-month-old positive
+    from an unrelated event satisfies FR-21 forever.
     """
+    try:
+        uuid.UUID(str(event_id))
+    except (ValueError, AttributeError, TypeError):
+        return False            # a malformed id is a refusal, not a 500 from Postgres
     with pool.connection() as c, c.cursor() as cur:
-        cur.execute("SELECT payload FROM events WHERE event_id=%s AND event_type=%s",
-                    (event_id, EventType.EVIDENCE_RECORDED.value))
+        cur.execute("""SELECT payload FROM events
+                       WHERE event_id=%s AND event_type=%s AND stream=%s
+                         AND catchment_id=%s AND event_time >= %s""",
+                    (event_id, EventType.EVIDENCE_RECORDED.value, stream,
+                     settings.catchment_id, not_before))
         row = cur.fetchone()
         if row is None:
             return False
@@ -225,22 +277,31 @@ def _is_positive_result(event_id: str) -> bool:
 # --------------------------------------------------------------------------- timers
 
 
-def resolve_due_episodes(now: dt.datetime | None = None) -> list[str]:
+def resolve_due_episodes(now: dt.datetime | None = None, *,
+                         stream: str | None = None) -> list[str]:
     """FR-22: close every episode whose clinical-relevance window has elapsed.
 
     Driven by the durable workflow below, and by the sweep in `timers`, so a missed or
     undelivered DBOS wake-up delays the transition instead of losing it.
+
+    `stream` is not optional in spirit. A sweep with no stream filter run from a test
+    process resolves live episodes, so the test suite silently mutates production state
+    (GC-10). Callers in the app pass the stream they are running for.
     """
     now = now or _now()
+    sql = (f"SELECT {','.join(_COLS)} FROM episodes WHERE catchment_id=%s "
+           "AND clinical_window_end <= %s AND state NOT IN ('RESOLVED','REFUTED')")
+    args: list = [settings.catchment_id, now]
+    if stream is not None:
+        sql += " AND stream=%s"
+        args.append(stream)
     with pool.connection() as c, c.cursor() as cur:
-        cur.execute(f"SELECT {','.join(_COLS)} FROM episodes WHERE catchment_id=%s "
-                    "AND clinical_window_end <= %s AND state NOT IN ('RESOLVED','REFUTED')",
-                    (settings.catchment_id, now))
+        cur.execute(sql, args)
         due = [dict(zip(_COLS, r, strict=True)) for r in cur.fetchall()]
     resolved = []
     for ep in due:
-        if EpisodeState(ep["state"]).can_transition_to(EpisodeState.RESOLVED):
-            _transition(ep, EpisodeState.RESOLVED, reason="clinical relevance window elapsed")
+        if EpisodeState(ep["state"]).can_transition_to(EpisodeState.RESOLVED) and _transition(
+                ep, EpisodeState.RESOLVED, reason="clinical relevance window elapsed"):
             resolved.append(ep["episode_id"])
     return resolved
 
@@ -250,7 +311,7 @@ def episode_workflow(catchment_id: str, episode_id: str) -> None:
     """Durable timers: FR-22 (clinical window) and FR-24 (post-episode bioassessment)."""
     ep = _episode(episode_id)
     DBOS.sleep(max((ep["clinical_window_end"] - _now()).total_seconds(), 0.0))
-    resolve_due_episodes()
+    resolve_due_episodes(stream=ep["stream"])
     if _episode(episode_id)["state"] == EpisodeState.CONFIRMED.value:
         DBOS.sleep(14 * 24 * 3600)                    # FR-24: 2-4 weeks later
         from .missions import create_bioassessment_mission

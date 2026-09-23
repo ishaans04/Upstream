@@ -41,7 +41,7 @@ _MISSION_COLS = ("mission_id", "episode_id", "node_id", "window_start", "window_
 
 def create_missions_from_probe(episode_id: str, candidates: list[dict]) -> list[MissionSpec]:
     """FR-15/FR-17: turn PROBE candidates into assigned, time-boxed missions."""
-    located = _with_locations(candidates)
+    located = _fresh(_with_locations(candidates), episode_id)
     if not located:
         return []
     volunteers = _available_volunteers()
@@ -95,6 +95,31 @@ def _with_locations(candidates: list[dict]) -> list[dict]:
     return out
 
 
+def _fresh(candidates: list[dict], episode_id: str) -> list[dict]:
+    """Drop candidates that are stale or already covered.
+
+    PROBE only guarantees a candidate's window is in the future at the moment its
+    snapshot was written. If the kernel stalls, re-planning from that snapshot mints a
+    mission whose window has already closed; the next sweep expires it and re-plans
+    from the same stale snapshot, so a volunteer gets a push every five minutes for a
+    trip they cannot take. Dropping the node that already has an open mission is what
+    stops the kernel's few-second posterior cadence stacking duplicates.
+    """
+    now = dt.datetime.now(dt.UTC).timestamp()
+    busy = _nodes_with_open_missions(episode_id)
+    out = []
+    for c in candidates:
+        if float(c["window_end"]) <= now:
+            log.info("probe candidate %s closed at %s; not dispatching",
+                     c.get("candidate_id"), _dt(c["window_end"]).isoformat())
+            continue
+        if c["node_id"] in busy:
+            continue
+        busy.add(c["node_id"])            # two candidates on one node is still one visit
+        out.append(c)
+    return out
+
+
 def _available_volunteers() -> list[dict]:
     with pool.connection() as c, c.cursor() as cur:
         cur.execute("""SELECT volunteer_id, ST_X(ST_Centroid(coarse_area)),
@@ -124,6 +149,12 @@ def create_bioassessment_mission(episode_id: str) -> str:
     Unassigned on purpose. A bioassessment is a scheduled survey rather than an errand
     someone has to run tonight, so it goes on the board for whoever is qualified.
     """
+    existing = _existing_bioassessment(episode_id)
+    if existing:
+        # DBOS re-enters an uncheckpointed workflow body on recovery, and a reopened
+        # episode can leave two timers running for one episode. FR-24 wants a survey,
+        # not a survey per restart.
+        return existing
     start = dt.datetime.now(dt.UTC) + dt.timedelta(days=BIOASSESSMENT_DELAY_DAYS)
     spec = MissionSpec(
         mission_id=f"M-{uuid.uuid4().hex[:4].upper()}", episode_id=episode_id,
@@ -145,12 +176,24 @@ def create_bioassessment_mission(episode_id: str) -> str:
 # --------------------------------------------------------------------------- lifecycle
 
 
+def _existing_bioassessment(episode_id: str) -> str | None:
+    with pool.connection() as c, c.cursor() as cur:
+        cur.execute("SELECT mission_id FROM missions WHERE episode_id=%s AND %s = ANY(methods)",
+                    (episode_id, ObservationMethod.BIOASSESSMENT.value))
+        row = cur.fetchone()
+    return row[0] if row else None
+
+
 def accept_mission(mission_id: str, volunteer_id: str) -> None:
     m = _mission(mission_id)
     if m["status"] not in OPEN_STATUSES:
         raise ValueError(f"mission {mission_id} is {m['status']}, not open")
     if m["window_end"] <= dt.datetime.now(dt.UTC):
         raise ValueError(f"mission {mission_id} has expired")
+    if m["assignee_id"] and m["assignee_id"] != volunteer_id:
+        # The assignment is a routing decision, not a free-for-all: silently rebinding
+        # the mission loses the fact that somebody else was asked and is on their way.
+        raise PermissionError(f"mission {mission_id} is assigned to someone else")
     _set_status(mission_id, MissionStatus.ACCEPTED, assignee_id=volunteer_id)
     store.append(EventEnvelope(
         stream=_stream_for(m["episode_id"]), catchment_id=settings.catchment_id,
@@ -159,36 +202,69 @@ def accept_mission(mission_id: str, volunteer_id: str) -> None:
 
 
 def decline_mission(mission_id: str, volunteer_id: str) -> None:
+    """A decline frees the mission and says so in the log (GC-5)."""
     m = _mission(mission_id)
-    _set_status(mission_id, MissionStatus.DECLINED, assignee_id=None)
+    if m["status"] not in OPEN_STATUSES:
+        raise ValueError(f"mission {mission_id} is {m['status']}, not open")
+    _set_status(mission_id, MissionStatus.DECLINED, clear_assignee=True)
+    store.append(EventEnvelope(
+        stream=_stream_for(m["episode_id"]), catchment_id=settings.catchment_id,
+        event_type=EventType.MISSION_DECLINED, event_time=dt.datetime.now(dt.UTC),
+        payload={"mission_id": mission_id, "episode_id": m["episode_id"],
+                 "volunteer_id": volunteer_id, "node_id": m["node_id"]}))
     _replan(m["episode_id"])
 
 
 def complete_mission(mission_id: str, evidence_event_id: str) -> None:
     """G7: record what the contribution actually changed, measured from two snapshots."""
     m = _mission(mission_id)
-    realised = _realised_gain(evidence_event_id)
+    if m["status"] not in OPEN_STATUSES:
+        raise ValueError(f"mission {mission_id} is {m['status']}, not open")
+    before, after = _snapshots_around(evidence_event_id)
+    realised = (decision_uncertainty(before) - decision_uncertainty(after)
+                if before is not None and after is not None else None)
     _set_status(mission_id, MissionStatus.COMPLETED, realised_gain=realised)
     store.append(EventEnvelope(
         stream=_stream_for(m["episode_id"]), catchment_id=settings.catchment_id,
         event_type=EventType.MISSION_COMPLETED, event_time=dt.datetime.now(dt.UTC),
         payload={"mission_id": mission_id, "evidence_event_id": evidence_event_id,
-                 "realised_gain": realised}))
+                 "realised_gain": realised,
+                 # Frozen at completion. Recomputing these when the feedback is read
+                 # let the sentence drift as later, unrelated evidence arrived, until
+                 # it contradicted the stored gain it was meant to explain.
+                 "sources_before": _live_sources(before) if before is not None else None,
+                 "sources_after": _live_sources(after) if after is not None else None}))
 
 
 # --------------------------------------------------------------------------- expiry
 
 
-def expire_due_missions(now: dt.datetime | None = None) -> list[str]:
-    """FR-23: a sample that did not come back inside its window expires, and we re-plan."""
+def expire_due_missions(now: dt.datetime | None = None, *,
+                        stream: str | None = None) -> list[str]:
+    """FR-23: a sample that did not come back inside its window expires, and we re-plan.
+
+    Scoped to one catchment and, when given, one stream. An unscoped sweep run from a
+    test process expires live missions, appends MissionExpired to the live log and
+    pushes a re-plan to real volunteers (GC-10).
+    """
     now = now or dt.datetime.now(dt.UTC)
+    sql = (f"SELECT m.{', m.'.join(_MISSION_COLS)} FROM missions m "
+           "JOIN episodes e ON e.episode_id = m.episode_id "
+           "WHERE m.window_end <= %s AND m.status = ANY(%s) AND e.catchment_id = %s")
+    args: list = [now, list(OPEN_STATUSES), settings.catchment_id]
+    if stream is not None:
+        sql += " AND e.stream = %s"
+        args.append(stream)
     with pool.connection() as c, c.cursor() as cur:
-        cur.execute(f"SELECT {','.join(_MISSION_COLS)} FROM missions "
-                    "WHERE window_end <= %s AND status = ANY(%s)", (now, list(OPEN_STATUSES)))
+        cur.execute(sql, args)
         due = [dict(zip(_MISSION_COLS, r, strict=True)) for r in cur.fetchall()]
     expired = []
     for m in due:
-        _set_status(m["mission_id"], MissionStatus.EXPIRED)
+        # Conditional on the status we read: several deadline workflows can wake on the
+        # same window and each would otherwise append its own MissionExpired.
+        if not _set_status(m["mission_id"], MissionStatus.EXPIRED,
+                           only_if=list(OPEN_STATUSES)):
+            continue
         store.append(EventEnvelope(
             stream=_stream_for(m["episode_id"]), catchment_id=settings.catchment_id,
             event_type=EventType.MISSION_EXPIRED, event_time=now,
@@ -205,7 +281,7 @@ def mission_deadline_workflow(mission_id: str) -> None:
     """The punctual half of FR-23; `expire_due_missions` is the certain half."""
     m = _mission(mission_id)
     DBOS.sleep(max((m["window_end"] - dt.datetime.now(dt.UTC)).total_seconds(), 0.0))
-    expire_due_missions()
+    expire_due_missions(stream=_stream_for(m["episode_id"]))
 
 
 def _replan(episode_id: str) -> None:
@@ -215,14 +291,23 @@ def _replan(episode_id: str) -> None:
     re-issuing a mission for a node that already has an open one would stack duplicates
     on the same volunteer every sweep.
     """
+    if not _is_open(episode_id):
+        # An expired mission on a refuted or resolved episode is not a reason to send
+        # somebody out again: the question it was going to answer is closed.
+        log.info("episode %s is closed; not re-planning", episode_id)
+        return
     candidates = _latest_probe_candidates(_stream_for(episode_id))
     if not candidates:
         log.info("no probe candidates to re-plan episode %s from", episode_id)
         return
-    busy = _nodes_with_open_missions(episode_id)
-    fresh = [c for c in candidates if c["node_id"] not in busy]
-    if fresh:
-        create_missions_from_probe(episode_id, fresh)
+    create_missions_from_probe(episode_id, candidates)
+
+
+def _is_open(episode_id: str) -> bool:
+    with pool.connection() as c, c.cursor() as cur:
+        cur.execute("SELECT state FROM episodes WHERE episode_id=%s", (episode_id,))
+        row = cur.fetchone()
+    return bool(row) and row[0] not in ("RESOLVED", "REFUTED")
 
 
 def _nodes_with_open_missions(episode_id: str) -> set[str]:
@@ -235,21 +320,34 @@ def _nodes_with_open_missions(episode_id: str) -> set[str]:
 # --------------------------------------------------------------------------- feedback
 
 
+MEASURES = ("the spread of probability across candidate entry points (source marginals), "
+            "which is not the decision-class scale PROBE's expected gain is measured on")
+
+
 def get_mission_feedback(mission_id: str) -> dict:
-    """What this trip actually changed, in the volunteer's words (G7, PRD 16)."""
+    """What this trip actually changed, in the volunteer's words (G7, PRD 16).
+
+    `expected_gain` is deliberately not returned beside `realised_gain`. PROBE's
+    expected gain is EC2 edge weight over *decision classes*; this is measured over
+    *source marginals*. In PROTECT mode two outfalls that trigger the same warning are
+    one decision class, so a sample separating them has an expected gain of exactly
+    zero while this number moves - printing them side by side invites a comparison that
+    means nothing.
+    """
     m = _mission(mission_id)
-    gain = m["realised_gain"]
-    return {"mission_id": mission_id, "status": m["status"], "realised_gain": gain,
-            "expected_gain": m["expected_gain"], "effect": _effect_sentence(mission_id, gain)}
+    counts = _completion_counts(mission_id)
+    return {"mission_id": mission_id, "status": m["status"],
+            "realised_gain": m["realised_gain"], "measures": MEASURES,
+            "sources_before": counts[0], "sources_after": counts[1],
+            "effect": _effect_sentence(m["realised_gain"], *counts)}
 
 
-def _effect_sentence(mission_id: str, gain: float | None) -> str:
+def _effect_sentence(gain: float | None, n_before: int | None, n_after: int | None) -> str:
+    """Built from the numbers frozen at completion, never recomputed from live belief."""
     if gain is None:
         return "This mission has not been completed yet."
-    before, after = _snapshots_for(mission_id)
-    if before is None or after is None:
+    if n_before is None or n_after is None:
         return "Recorded. The effect will be measurable once belief is recomputed."
-    n_before, n_after = _live_sources(before), _live_sources(after)
     if gain <= 0:
         return ("Recorded, and it widened the field rather than narrowing it: "
                 f"{n_after} possible sources are still in play, against {n_before} before. "
@@ -271,21 +369,18 @@ def _live_sources(marginals: dict) -> int:
 
 
 def decision_uncertainty(marginals: dict) -> float:
-    """1 - sum p^2 over the mutually exclusive outcomes: EC2's edge weight (PRD 7.5).
+    """1 - sum p^2 over the mutually exclusive source outcomes.
 
-    The same quantity PROBE maximises the expected reduction of, so a mission's realised
-    gain is measured on the scale its expected gain was promised in.
+    This is *not* EC2's edge weight and must not be compared with PROBE's expected
+    gain. EC2 partitions hypotheses into decision classes and weights
+    0.5 * (total^2 - sum per_class^2); this partitions by entry point, including the
+    `__none__` and `__diffuse__` pseudo-sources. Measuring the realised effect on the
+    decision-class scale would mean persisting the classes in the snapshot, which the
+    kernel does not do; until it does, this is an honest proxy under its own name.
     """
     p = [float(v) for v in marginals.values()]
     total = sum(p) or 1.0
     return 1.0 - sum((x / total) ** 2 for x in p)
-
-
-def _realised_gain(evidence_event_id: str) -> float | None:
-    before, after = _snapshots_around(evidence_event_id)
-    if before is None or after is None:
-        return None
-    return decision_uncertainty(before) - decision_uncertainty(after)
 
 
 def _snapshots_around(evidence_event_id: str) -> tuple[dict | None, dict | None]:
@@ -301,22 +396,28 @@ def _snapshots_around(evidence_event_id: str) -> tuple[dict | None, dict | None]
                        ORDER BY as_of_seq DESC LIMIT 1""",
                     (settings.catchment_id, stream, seq))
         before = cur.fetchone()
+        # ASC, not DESC: the first snapshot that includes this evidence. Taking the
+        # newest one credits the volunteer with everything the system learned since,
+        # which on a busy catchment is mostly other people's work.
         cur.execute("""SELECT source_marginals FROM posterior_snapshots
                        WHERE catchment_id=%s AND stream=%s AND as_of_seq >= %s
-                       ORDER BY as_of_seq DESC LIMIT 1""",
+                       ORDER BY as_of_seq ASC LIMIT 1""",
                     (settings.catchment_id, stream, seq))
         after = cur.fetchone()
     return (before[0] if before else None), (after[0] if after else None)
 
 
-def _snapshots_for(mission_id: str) -> tuple[dict | None, dict | None]:
+def _completion_counts(mission_id: str) -> tuple[int | None, int | None]:
+    """The live-source counts recorded when the mission was completed."""
     with pool.connection() as c, c.cursor() as cur:
-        cur.execute("""SELECT payload->>'evidence_event_id' FROM events
+        cur.execute("""SELECT payload FROM events
                        WHERE event_type=%s AND payload->>'mission_id'=%s
                        ORDER BY seq DESC LIMIT 1""",
                     (EventType.MISSION_COMPLETED.value, mission_id))
         row = cur.fetchone()
-    return _snapshots_around(row[0]) if row and row[0] else (None, None)
+    if not row:
+        return None, None
+    return row[0].get("sources_before"), row[0].get("sources_after")
 
 
 def _latest_probe_candidates(stream: str) -> list[dict]:
@@ -349,18 +450,32 @@ def _mission(mission_id: str) -> dict:
 
 
 def _set_status(mission_id: str, status: MissionStatus, *, realised_gain: float | None = None,
-                assignee_id: str | None = None) -> None:
+                assignee_id: str | None = None, clear_assignee: bool = False,
+                only_if: list[str] | None = None) -> bool:
+    """Update a mission. Returns whether this caller made the change.
+
+    `clear_assignee` is separate from `assignee_id=None` because "leave the assignee
+    alone" and "the assignee let it go" are different instructions, and conflating them
+    left declined missions still listed as the declining volunteer's.
+    """
     sets = ["status=%s"]
     args: list = [status.value]
     if realised_gain is not None:
         sets.append("realised_gain=%s")
         args.append(realised_gain)
-    if assignee_id is not None:
+    if clear_assignee:
+        sets += ["assignee_id=NULL", "assignee_type=NULL"]
+    elif assignee_id is not None:
         sets += ["assignee_id=%s", "assignee_type='volunteer'"]
         args.append(assignee_id)
+    sql = f"UPDATE missions SET {','.join(sets)} WHERE mission_id=%s"
     args.append(mission_id)
+    if only_if is not None:
+        sql += " AND status = ANY(%s)"
+        args.append(only_if)
     with pool.connection() as c, c.cursor() as cur:
-        cur.execute(f"UPDATE missions SET {','.join(sets)} WHERE mission_id=%s", args)
+        cur.execute(sql, args)
+        return cur.rowcount == 1
 
 
 def _episode_node(episode_id: str) -> str:

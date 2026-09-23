@@ -256,21 +256,26 @@ def test_the_episode_detail_still_carries_the_full_curve_for_plotting(episode_wi
     assert len(d["zone_windows"]["ZONE_000"]["t_grid"]) == 432
 
 
-def test_confirmed_evidence_returns_an_id_that_sign_off_accepts(a_node, an_episode,
-                                                                episode_row):
+def test_confirmed_evidence_returns_an_id_that_names_the_stored_event(a_node, db_conn):
     """FR-21 is only reachable from the API if ingestion hands back the event's id.
 
     The ingest routes returned a sequence number, which sign-off cannot look an event
-    up by, so the documented officer workflow could not actually be performed.
+    up by, so the documented officer workflow could not be performed at all.
+
+    Sign-off itself is exercised on the sim stream in test_read_apis and
+    test_episode_workflow; it cannot be driven from this route, because
+    /ingest/report/confirm always writes to `live` and the FR-21 gate refuses
+    evidence from another stream.
     """
     r = client.post("/ingest/report/confirm", json={
         "node_id": a_node, "observed_at": dt.datetime.now(dt.UTC).isoformat(),
         "method": "field_test", "result": "positive", "observer_id": "off-1",
         "observer_type": "officer", "snap_distance_m": 0.0, "oah_codes": []})
     assert r.status_code == 201
-    event_id = r.json()["event_id"]
-
-    s = client.post(f"/episodes/{an_episode}/signoff",
-                    json={"officer_id": "off-1", "field_result_event_id": event_id})
-    assert s.status_code == 200, s.text
-    assert episode_row(an_episode)["state"] == "CONFIRMED"
+    body = r.json()
+    with db_conn.cursor() as cur:
+        cur.execute("SELECT seq, stream, payload->>'result' FROM events WHERE event_id=%s",
+                    (body["event_id"],))
+        row = cur.fetchone()
+    assert row is not None, "the returned event_id does not name a stored event"
+    assert row[0] == body["seq"] and row[1] == "live" and row[2] == "positive"

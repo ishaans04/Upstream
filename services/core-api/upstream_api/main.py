@@ -72,7 +72,7 @@ async def _episode_lifecycle_loop():
             now = asyncio.get_running_loop().time()
             if now >= next_sweep:
                 next_sweep = now + TIMER_SWEEP_INTERVAL_S
-                log.info("timer sweep: %s", timers.sweep_due())
+                log.info("timer sweep: %s", timers.sweep_due(stream="live"))
         except asyncio.CancelledError:
             raise
         except Exception:

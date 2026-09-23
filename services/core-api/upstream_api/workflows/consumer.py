@@ -21,8 +21,21 @@ from .episode import on_posterior_computed
 
 log = logging.getLogger(__name__)
 
-CONSUMER = "episodes"
+LEGACY_CONSUMER = "episodes"
 BATCH = 500
+
+
+def consumer_name(stream: str) -> str:
+    """One cursor per stream.
+
+    `seq` is a single global identity column shared by every stream, so a cursor keyed
+    only by consumer name lets a pass over one stream skip unconsumed events on
+    another. Running the test suite against a live database advanced the shared
+    'episodes' cursor past every live event and the live lifecycle simply stopped -
+    silently, because a cursor that is too far ahead looks exactly like one that is up
+    to date (GC-10).
+    """
+    return f"{LEGACY_CONSUMER}:{stream}"
 
 
 def process_new_posteriors(*, stream: str = "live") -> int:
@@ -32,7 +45,7 @@ def process_new_posteriors(*, stream: str = "live") -> int:
     otherwise the cursor would stall behind the first piece of evidence in the log and
     re-read it forever.
     """
-    last = _position()
+    last = _position(stream)
     events = store.read_from(last, catchment_id=settings.catchment_id, stream=stream,
                              limit=BATCH)
     if not events:
@@ -49,20 +62,31 @@ def process_new_posteriors(*, stream: str = "live") -> int:
             # later one. The event stays in the log and the position still advances,
             # so this is visible in the logs rather than silently retried forever.
             log.exception("episode consumer failed on event %s", event.event_id)
-    _set_position(events[-1].seq)
+    _set_position(stream, events[-1].seq)
     return handled
 
 
-def _position() -> int:
+def _position(stream: str) -> int:
+    """This stream's cursor, seeded from the old shared one the first time.
+
+    Starting a fresh per-stream cursor at zero would replay the entire log as new
+    belief and reopen every episode in it, so the legacy value is inherited once.
+    """
     with pool.connection() as c, c.cursor() as cur:
-        cur.execute("SELECT last_seq FROM consumer_positions WHERE consumer=%s", (CONSUMER,))
+        cur.execute("SELECT last_seq FROM consumer_positions WHERE consumer=%s",
+                    (consumer_name(stream),))
         row = cur.fetchone()
-    return row[0] if row else 0
+        if row is not None:
+            return row[0]
+        cur.execute("SELECT last_seq FROM consumer_positions WHERE consumer=%s",
+                    (LEGACY_CONSUMER,))
+        legacy = cur.fetchone()
+    return legacy[0] if legacy else 0
 
 
-def _set_position(seq: int) -> None:
+def _set_position(stream: str, seq: int) -> None:
     with pool.connection() as c, c.cursor() as cur:
         cur.execute("""INSERT INTO consumer_positions (consumer,last_seq,updated_at)
                        VALUES (%s,%s,now()) ON CONFLICT (consumer)
                        DO UPDATE SET last_seq=EXCLUDED.last_seq, updated_at=now()""",
-                    (CONSUMER, seq))
+                    (consumer_name(stream), seq))

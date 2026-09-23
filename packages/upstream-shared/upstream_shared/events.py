@@ -25,6 +25,7 @@ class EventType(StrEnum):
     MISSION_ACCEPTED = "MissionAccepted"
     MISSION_COMPLETED = "MissionCompleted"
     MISSION_EXPIRED = "MissionExpired"
+    MISSION_DECLINED = "MissionDeclined"
     FHIR_PUBLISHED = "FhirPublished"
     CLINICAL_TEST_RESULT = "ClinicalTestResult"
     UPSTREAM_SEARCH_REQUESTED = "UpstreamSearchRequested"

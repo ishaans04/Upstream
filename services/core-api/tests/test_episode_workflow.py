@@ -217,24 +217,26 @@ def test_sign_off_request_is_recorded_as_an_event(emit_posterior, episode_row, e
 @pytest.fixture
 def consumer_at_now(db_conn):
     """Park the episode consumer at the end of the log, and restore it afterwards."""
-    from upstream_api.workflows.consumer import CONSUMER
+    from upstream_api.workflows.consumer import consumer_name
+
+    name = consumer_name(STREAM)
 
     with db_conn.cursor() as cur:
-        cur.execute("SELECT last_seq FROM consumer_positions WHERE consumer=%s", (CONSUMER,))
+        cur.execute("SELECT last_seq FROM consumer_positions WHERE consumer=%s", (name,))
         row = cur.fetchone()
         before = row[0] if row else None
         cur.execute("SELECT coalesce(max(seq),0) FROM events")
         cur.execute("""INSERT INTO consumer_positions (consumer,last_seq,updated_at)
                        VALUES (%s,(SELECT coalesce(max(seq),0) FROM events),now())
                        ON CONFLICT (consumer) DO UPDATE SET last_seq=EXCLUDED.last_seq""",
-                    (CONSUMER,))
+                    (name,))
     yield
     with db_conn.cursor() as cur:
         if before is None:
-            cur.execute("DELETE FROM consumer_positions WHERE consumer=%s", (CONSUMER,))
+            cur.execute("DELETE FROM consumer_positions WHERE consumer=%s", (name,))
         else:
             cur.execute("UPDATE consumer_positions SET last_seq=%s WHERE consumer=%s",
-                        (before, CONSUMER))
+                        (before, name))
 
 
 def _append_posterior(store, p_event: float, stream: str = STREAM):
