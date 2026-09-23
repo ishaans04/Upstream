@@ -723,6 +723,19 @@ wheels = [
 ]
 
 [[package]]
+name = "geoalchemy2"
+version = "0.15.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "packaging" },
+    { name = "sqlalchemy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/a1/38/bac6dce23250751ce448f5d21b31aed68b2ac5d8a8b4ca267b9a44c12dd4/geoalchemy2-0.15.2.tar.gz", hash = "sha256:3af0272db927373e74ee3b064cdc9464ba08defdb945c51745db1b841482f5dc", size = 225642, upload-time = "2024-07-10T18:53:36.103Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/6e/f7/a71bbed7252af7db0746b81b83d68bd400f169e49d3726072e547774d949/GeoAlchemy2-0.15.2-py3-none-any.whl", hash = "sha256:546455dc39f5bcdfc5b871e57d3f7546c8a6f798eb364c474200f488ace6fd32", size = 73601, upload-time = "2024-07-10T18:53:34.151Z" },
+]
+
+[[package]]
 name = "geopandas"
 version = "1.0.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1016,6 +1029,7 @@ name = "kernel"
 version = "0.1.0"
 source = { editable = "services/kernel" }
 dependencies = [
+    { name = "geoalchemy2" },
     { name = "geopandas" },
     { name = "jax" },
     { name = "numpy" },
@@ -1027,6 +1041,7 @@ dependencies = [
     { name = "rustworkx" },
     { name = "scipy" },
     { name = "shapely" },
+    { name = "sqlalchemy" },
     { name = "upstream-shared" },
 ]
 
@@ -1039,6 +1054,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "geoalchemy2", specifier = "==0.15.*" },
     { name = "geopandas", specifier = "==1.0.*" },
     { name = "jax", extras = ["cpu"], specifier = "==0.4.35" },
     { name = "numpy", specifier = "==2.1.*" },
@@ -1050,6 +1066,7 @@ requires-dist = [
     { name = "rustworkx", specifier = "==0.15.*" },
     { name = "scipy", specifier = "==1.14.*" },
     { name = "shapely", specifier = "==2.0.*" },
+    { name = "sqlalchemy", specifier = "==2.0.*" },
     { name = "upstream-shared", editable = "packages/upstream-shared" },
 ]
 
