@@ -1,0 +1,33 @@
+[project]
+name = "upstream-onehealth"
+version = "0.1.0"
+description = "Upstream — event-driven One Health exposure-episode system"
+requires-python = "==3.12.*"
+dependencies = []
+
+[dependency-groups]
+dev = ["pytest==8.3.*", "pytest-asyncio==0.24.*", "ruff==0.7.*"]
+
+[tool.uv]
+package = false
+
+[tool.uv.workspace]
+members = ["packages/*", "services/*"]
+
+[tool.uv.sources]
+upstream-shared = { workspace = true }
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["E501", "E701", "E702"]
+
+[tool.pytest.ini_options]
+testpaths = ["services", "packages"]
+addopts = "-q --strict-markers"
+markers = ["integration: needs docker-compose services", "slow: benchmark-scale"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"

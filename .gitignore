@@ -1,0 +1,20 @@
+__pycache__/
+*.py[cod]
+.venv/
+.env
+.env.local
+data/artifacts/
+node_modules/
+web/.next/
+fhir/fsh-generated/
+fhir/output/
+fhir/input-cache/
+.pytest_cache/
+.ruff_cache/
+bench/results/
+*.parquet
+
+# Agent working context — local only, never committed
+CLAUDE.md
+changelog.md
+.env.host

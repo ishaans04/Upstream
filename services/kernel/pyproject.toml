@@ -1,0 +1,28 @@
+[project]
+name = "kernel"
+version = "0.1.0"
+requires-python = "==3.12.*"
+dependencies = [
+  "upstream-shared",
+  "jax[cpu]==0.4.35",
+  "numpy==2.1.*",
+  "scipy==1.14.*",
+  "rustworkx==0.15.*",
+  "shapely==2.0.*",
+  "pyproj==3.7.*",
+  "geopandas==1.0.*",
+  "osmnx==2.0.*",
+  "ortools==9.11.*",
+  "psycopg[binary,pool]==3.2.*",
+  "pyarrow==17.*",
+]
+
+[dependency-groups]
+dev = ["pytest==8.3.*", "pytest-asyncio==0.24.*", "ruff==0.7.*"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["upstream_kernel"]
