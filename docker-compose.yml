@@ -66,12 +66,17 @@ services:
       SPRING_DATASOURCE_USERNAME: hapi_role
       SPRING_DATASOURCE_PASSWORD: ${HAPI_DB_PASSWORD}
       SPRING_DATASOURCE_DRIVERCLASSNAME: org.postgresql.Driver
-      SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: ca.uhn.fhir.jpa.model.dialect.HapiFhirPostgres94Dialect
+      # HapiFhirPostgres94Dialect no longer exists in HAPI 7.4. Naming a missing
+      # dialect class does not fail loudly - Hibernate falls back to H2 and then
+      # emits CLOB columns against Postgres, so the container dies on DDL.
+      SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: ca.uhn.fhir.jpa.model.dialect.HapiFhirPostgresDialect
       HAPI_FHIR_FHIR_VERSION: R4
       HAPI_FHIR_VALIDATION_REQUESTS_ENABLED: "true"
       HAPI_FHIR_SUBSCRIPTION_RESTHOOK_ENABLED: "true"
-      HAPI_FHIR_IMPLEMENTATIONGUIDES_OAH_NAME: hl7.eu.fhir.oah
-      HAPI_FHIR_IMPLEMENTATIONGUIDES_OAH_VERSION: ${OAH_IG_VERSION}
+      # Phase 7 resolves the OAH IG version and re-enables these two lines.
+      # An empty version makes the package installer abort at boot.
+      # HAPI_FHIR_IMPLEMENTATIONGUIDES_OAH_NAME: hl7.eu.fhir.oah
+      # HAPI_FHIR_IMPLEMENTATIONGUIDES_OAH_VERSION: ${OAH_IG_VERSION}
     depends_on: { db: { condition: service_healthy } }
     ports: ["8080:8080"]
 
