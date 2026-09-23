@@ -77,14 +77,17 @@ def test_recurring_source_history_raises_that_entry_prior():
     assert more[g.entry_k == k].sum() > base[g.entry_k == k].sum()
 
 
-def test_a_storm_makes_an_event_more_likely_overall():
-    """PRD 7.9 role 1 is about more than which source: storms make spills likelier.
+def test_weather_alone_never_opens_an_episode():
+    """Rainfall says *which* source. Evidence says *whether*.
 
-    If the no-event prior were pinned to a constant, the model could only ever argue
-    about *which* source given an event, never that an event is more probable at all.
+    Letting a storm raise the no-event prior is tempting - spills really are likelier
+    in storms - but it would push p_event past the SUSPECTED threshold every time it
+    rained, and the system would open episodes from weather rather than from evidence
+    (PRD 6.3). The prior probability that something is happening therefore stays put
+    across flow conditions; only its distribution over sources moves.
     """
-    net, g, dry = setup("dry")
-    _, _, storm = setup("storm")
-    p_none_dry = float(np.exp(log_prior(net, g, dry, default_params()))[g.kind == KIND_NONE][0])
-    p_none_storm = float(np.exp(log_prior(net, g, storm, default_params()))[g.kind == KIND_NONE][0])
-    assert p_none_storm < p_none_dry
+    net, g, _ = setup()
+    for cond in FLOW_CONDITIONS:
+        _, _, inp = setup(cond)
+        p = np.exp(log_prior(net, g, inp, default_params()))
+        assert float(p[g.kind == KIND_NONE][0]) == pytest.approx(0.97, abs=1e-9), cond

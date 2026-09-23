@@ -28,7 +28,12 @@ class PriorInputs:
 
 # How much each source type's base rate is multiplied in each flow condition.
 _RAIN_FACTOR: dict[str, dict[str, float]] = {
-    "cso":            {"dry": 0.05, "wet": 1.0, "storm": 12.0},
+    # A CSO discharging in dry weather is an incident, not a normal event, which is
+    # what makes a dry-weather report point away from it so strongly (PRD 7.9 role 1,
+    # converse). At the plan's 0.05 the storm/dry ratio is only 2.4 and fails the
+    # stated requirement that a storm raises the CSO prior more than threefold; at
+    # 0.01 it is 8.4.
+    "cso":            {"dry": 0.01, "wet": 1.0, "storm": 12.0},
     "storm_outfall":  {"dry": 0.30, "wet": 1.5, "storm": 4.0},
     "misconnection":  {"dry": 1.00, "wet": 1.0, "storm": 1.0},   # constant, rain-independent
     "industrial":     {"dry": 1.00, "wet": 1.0, "storm": 1.2},
@@ -36,9 +41,14 @@ _RAIN_FACTOR: dict[str, dict[str, float]] = {
     "unknown":        {"dry": 0.50, "wet": 1.0, "storm": 2.0},
 }
 
-# Probability that nothing is happening, in *dry* weather. Conditions move it: see
-# the odds calculation in log_prior.
-P_NO_EVENT_DRY = 0.97
+# Probability that nothing is happening. Deliberately constant across flow conditions.
+#
+# It is tempting to let a storm raise it - spills really are likelier in storms - but
+# operationally that is wrong: the prior alone would then push p_event past the
+# SUSPECTED threshold every time it rained, and the system would open episodes from
+# weather rather than from evidence (PRD 6.3). Rainfall's job is to say *which* source,
+# and it does that through _RAIN_FACTOR. Evidence decides *whether*.
+P_NO_EVENT = 0.97
 DIFFUSE_BASE = 0.002
 FIRST_FLUSH_DRY_H = 24.0
 
@@ -73,26 +83,10 @@ def _event_weights(net, grid, inputs: PriorInputs, cond_idx: np.ndarray) -> np.n
 def log_prior(net, grid, inputs: PriorInputs, params) -> np.ndarray:
     w = _event_weights(net, grid, inputs, inputs.flow_condition_by_bin)
 
-    # The no-event prior is not a constant. Renormalising event mass to a fixed budget
-    # would let the model argue only about *which* source, never that an event is more
-    # likely at all - and PRD 7.9 role 1 is precisely that storms make spills likelier.
-    #
-    # Instead the odds of "something happened" scale with how much the conditions raise
-    # the total event weight above the same grid evaluated in dry weather. Measuring
-    # against the grid's own dry reference keeps this independent of how many entries,
-    # bins or duration classes the grid happens to have.
-    dry = np.full_like(inputs.flow_condition_by_bin, FLOW_CONDITIONS.index("dry"))
-    w_dry = _event_weights(net, grid, inputs, dry)
-
-    odds_dry = (1.0 - P_NO_EVENT_DRY) / P_NO_EVENT_DRY
-    ref = float(w_dry.sum())
-    odds_event = odds_dry * (float(w.sum()) / ref) if ref > 0 else odds_dry
-    p_event = odds_event / (1.0 + odds_event)
-
     total = float(w.sum())
     if total > 0:
-        w *= p_event / total
-    w[grid.kind == KIND_NONE] = 1.0 - p_event
+        w *= (1.0 - P_NO_EVENT) / total
+    w[grid.kind == KIND_NONE] = P_NO_EVENT
 
     logw = np.log(np.maximum(w, 1e-300))
     return logw - logsumexp(logw)
