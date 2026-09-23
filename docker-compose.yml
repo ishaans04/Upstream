@@ -42,7 +42,13 @@ services:
     build: { context: ., dockerfile: docker/Dockerfile.python, args: { SERVICE: kernel } }
     command: python -m upstream_kernel.worker
     environment:
+      # The worker uses KERNEL_DATABASE_URL and only that: kernel_role cannot read
+      # sim_truth and cannot write episodes (GC-10, PRD 10.3).
       KERNEL_DATABASE_URL: ${KERNEL_DATABASE_URL}
+      # The compile CLI is a build task that happens to ship in this image. It
+      # populates the network tables, which kernel_role may only SELECT, so it
+      # needs the app connection. Nothing in the worker path may use this.
+      DATABASE_URL: ${DATABASE_URL}
       CATCHMENT_ID: ${CATCHMENT_ID}
       JAX_PLATFORMS: cpu
       JAX_ENABLE_X64: "1"                          # GC-6 determinism + numeric headroom
