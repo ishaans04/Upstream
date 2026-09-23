@@ -1,4 +1,5 @@
 import pytest
+from pydantic import ValidationError
 from upstream_api.ingest.normaliser import (
     ClaudeNormaliser,
     NormalisedReport,
@@ -21,7 +22,7 @@ def test_stub_detects_a_positive_sewage_report():
 
 
 def test_normalised_report_rejects_confidence_outside_unit_interval():
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         NormalisedReport(method="citizen_freetext", result="positive", value=None, unit=None,
                          oah_codes=[], observed_signs=[], confidence=1.4, rationale="x")
 
