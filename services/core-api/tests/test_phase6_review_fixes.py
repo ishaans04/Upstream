@@ -68,21 +68,39 @@ def test_the_consumer_cursor_is_kept_per_stream(db_conn, store, episodes):
         cur.execute("SELECT consumer FROM consumer_positions WHERE consumer LIKE 'episodes%%'")
         names = {r[0] for r in cur.fetchall()}
     assert consumer_name(STREAM) in names
-    assert consumer_name("live") not in names or True   # live may legitimately exist
 
 
 def test_consuming_one_stream_does_not_move_another_streams_cursor(db_conn, store, episodes):
+    """Observe the live cursor; never write it.
+
+    The first version of this test seeded `episodes:live` at zero to prove the point,
+    and the running API then replayed the entire live log as new belief - the very
+    thing the per-stream cursor exists to prevent. A test that has to corrupt live
+    state to prove live state is safe proves the opposite.
+    """
     from upstream_api.workflows.consumer import consumer_name, process_new_posteriors
 
-    with db_conn.cursor() as cur:
-        cur.execute("""INSERT INTO consumer_positions (consumer,last_seq,updated_at)
-                       VALUES (%s,0,now()) ON CONFLICT (consumer)
-                       DO UPDATE SET last_seq=0""", (consumer_name("live"),))
+    def _live_cursor():
+        with db_conn.cursor() as cur:
+            cur.execute("SELECT last_seq FROM consumer_positions WHERE consumer=%s",
+                        (consumer_name("live"),))
+            row = cur.fetchone()
+        return row[0] if row else None
+
+    before = _live_cursor()
+    store.append(EventEnvelope(
+        stream=STREAM, catchment_id=_catchment(), event_type=EventType.POSTERIOR_COMPUTED,
+        event_time=dt.datetime.now(dt.UTC),
+        payload={"fingerprint": "fp-x", "p_event": 0.6, "as_of_seq": 0, "top_sources": [],
+                 "est_start": [None, None], "zone_windows": {}, "probe_candidates": []}))
     process_new_posteriors(stream=STREAM)
-    with db_conn.cursor() as cur:
-        cur.execute("SELECT last_seq FROM consumer_positions WHERE consumer=%s",
-                    (consumer_name("live"),))
-        assert cur.fetchone()[0] == 0, "a sim pass moved the live cursor"
+    assert _live_cursor() == before, "a sim pass moved the live cursor"
+
+
+def _catchment() -> str:
+    from upstream_api.config import settings
+
+    return settings.catchment_id
 
 
 # ------------------------------------------------------- 3: the sweep stays in its stream

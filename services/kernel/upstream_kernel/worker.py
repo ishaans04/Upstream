@@ -36,7 +36,19 @@ log = logging.getLogger(__name__)
 
 KERNEL_VERSION = "upstream-kernel 0.1.0"
 HORIZON_HOURS = 24
-CONSUMER = "kernel"
+LEGACY_CONSUMER = "kernel"
+
+
+def consumer_name(catchment_id: str, stream: str) -> str:
+    """One cursor per catchment and stream.
+
+    `seq` is a single global identity column and `consumer_positions` is keyed by name
+    alone, so every worker pointed at this database shared one row: the deployed kernel
+    and a worker running against a test catchment each moved the other's cursor, which
+    makes a worker re-process evidence it has already handled or skip evidence it never
+    saw. The same mistake was made on the episode consumer (GC-10).
+    """
+    return f"{LEGACY_CONSUMER}:{catchment_id}:{stream}"
 BIN_S = 900
 
 StoredRow = namedtuple("StoredRow", "seq event_id event_type event_time payload")
@@ -178,16 +190,23 @@ class KernelWorker:
 
     def _position(self) -> int:
         with self.conn.cursor() as cur:
-            cur.execute("SELECT last_seq FROM consumer_positions WHERE consumer=%s", (CONSUMER,))
+            name = consumer_name(self.catchment_id, self.stream)
+            cur.execute("SELECT last_seq FROM consumer_positions WHERE consumer=%s", (name,))
             row = cur.fetchone()
-            return row[0] if row else 0
+            if row is not None:
+                return row[0]
+            # Inherit the old shared cursor once, so upgrading does not replay the log.
+            cur.execute("SELECT last_seq FROM consumer_positions WHERE consumer=%s",
+                        (LEGACY_CONSUMER,))
+            legacy = cur.fetchone()
+            return legacy[0] if legacy else 0
 
     def _set_position(self, seq: int) -> None:
         with self.conn.cursor() as cur:
             cur.execute("""INSERT INTO consumer_positions (consumer,last_seq,updated_at)
                            VALUES (%s,%s,now()) ON CONFLICT (consumer)
                            DO UPDATE SET last_seq=EXCLUDED.last_seq, updated_at=now()""",
-                        (CONSUMER, seq))
+                        (consumer_name(self.catchment_id, self.stream), seq))
 
     def reset_position(self) -> None:
         self._set_position(0)

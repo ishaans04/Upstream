@@ -272,6 +272,7 @@ def test_a_replan_reads_only_its_own_streams_belief(an_episode, candidates, a_vo
     seed_snapshot({"__none__": 0.2, _network.entry_nodes[0]: 0.8},
                   probe=candidates(1, window_s=7200))
     # A later snapshot on the *live* stream, with no candidates to re-plan from.
+    # `seed_snapshot`'s teardown removes it: kernel_version='test' marks it as ours.
     with db_conn.cursor() as cur:
         cur.execute("""INSERT INTO posterior_snapshots (ts,fingerprint,episode_id,
             catchment_id,stream,as_of_seq,network_version,kernel_version,params_version,

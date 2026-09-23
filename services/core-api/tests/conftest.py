@@ -383,6 +383,19 @@ def count_missions(db_conn):
     return _count
 
 
+def _purge_test_snapshots(db_conn) -> None:
+    """Remove every snapshot a test wrote, on any stream.
+
+    Scoping this to the sim stream was not enough: an isolation test has to write a
+    *live* row to prove a sim read ignores it, and those rows survived - one of them
+    future-dated - so the live /replay and /episodes views were reading a fabricated
+    belief. Test rows are identified by `kernel_version='test'`, which the real kernel
+    never writes.
+    """
+    with db_conn.cursor() as cur:
+        cur.execute("DELETE FROM posterior_snapshots WHERE kernel_version='test'")
+
+
 @pytest.fixture
 def seed_snapshot(db_conn, _network):
     """Write a posterior snapshot with chosen source marginals."""
@@ -403,6 +416,4 @@ def seed_snapshot(db_conn, _network):
                          Jsonb(probe or []), Jsonb(explanation or {})))
 
     yield _seed
-    with db_conn.cursor() as cur:
-        cur.execute("DELETE FROM posterior_snapshots WHERE stream=%s AND kernel_version='test'",
-                    (STREAM,))
+    _purge_test_snapshots(db_conn)

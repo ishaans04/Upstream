@@ -30,11 +30,15 @@ def test_worker_emits_posterior_computed_with_a_fingerprint(kernel_worker, post_
 
 
 def test_worker_advances_its_consumer_position(kernel_worker, post_evidence, db_conn):
+    from upstream_kernel.worker import consumer_name
+
     post_evidence(result="positive")
     kernel_worker.process_once()
     with db_conn.cursor() as cur:
-        cur.execute("SELECT last_seq FROM consumer_positions WHERE consumer='kernel'")
-        assert cur.fetchone()[0] > 0
+        cur.execute("SELECT last_seq FROM consumer_positions WHERE consumer=%s",
+                    (consumer_name(kernel_worker.catchment_id, kernel_worker.stream),))
+        row = cur.fetchone()
+    assert row is not None and row[0] > 0
 
 
 def test_reprocessing_the_same_evidence_yields_the_same_fingerprint(kernel_worker,
@@ -117,3 +121,22 @@ def test_retraction_changes_the_fingerprint(kernel_worker, post_evidence, db_con
                     "ORDER BY ts DESC LIMIT 1", (kernel_worker.catchment_id,))
         after = cur.fetchone()[0]
     assert after != before
+
+
+def test_the_consumer_position_is_kept_per_catchment_and_stream(kernel_worker, db_conn):
+    """One global 'kernel' row is shared by every worker that runs against this database.
+
+    The deployed kernel and a test worker use different catchments, but both wrote the
+    same `consumer_positions` row, so each silently moved the other's cursor: a worker
+    could re-process evidence it had already handled, or skip evidence it never had.
+    """
+    from upstream_kernel.worker import consumer_name
+
+    name = consumer_name(kernel_worker.catchment_id, kernel_worker.stream)
+    assert name != consumer_name("another-catchment", kernel_worker.stream)
+    assert name != consumer_name(kernel_worker.catchment_id, "live")
+
+    kernel_worker._set_position(4242)
+    with db_conn.cursor() as cur:
+        cur.execute("SELECT last_seq FROM consumer_positions WHERE consumer=%s", (name,))
+        assert cur.fetchone()[0] == 4242
