@@ -60,7 +60,7 @@ def main() -> None:
         dsn = os.environ["DATABASE_URL"]
         footpaths = (gpd.GeoDataFrame({"u": [], "v": [], "length": [], "geometry": []},
                                       crs="EPSG:4326")
-                     if a.synthetic else fetch_footpaths(a.boundary))
+                     if a.synthetic else fetch_footpaths(a.boundary, nodes))
         _write_postgis(dsn, net.version, nodes, edges, outfalls, zones,
                        footpaths, a.catchment)
         with psycopg.connect(dsn, autocommit=True) as c, c.cursor() as cur:

@@ -119,8 +119,26 @@ def _keep_single_outflow(edges):
     return edges.loc[sorted(keep)].reset_index(drop=True)
 
 
-def fetch_footpaths(boundary_path: str) -> gpd.GeoDataFrame:
-    boundary = gpd.read_file(boundary_path).union_all()
-    g = ox.graph_from_polygon(boundary, custom_filter=FOOTPATH_FILTER, simplify=True)
+FOOTPATH_BUFFER_DEG = 0.006          # roughly 500 m
+
+
+def fetch_footpaths(boundary_path: str, nodes_gdf=None) -> gpd.GeoDataFrame:
+    """Footpaths covering everywhere a mission could be sent.
+
+    The catchment boundary is a corridor, but OSM waterways are returned whole: a reach
+    that crosses the boundary is kept entire, so stream nodes end up outside it. Fetching
+    footpaths over the bare boundary therefore leaves parts of the network with no path
+    within kilometres - measured at 3.1 km for the eastern headwater outfall, which made
+    PROBE's walking times meaningless and silently excluded those candidates from every
+    assignment.
+
+    So the fetch covers the boundary *and* the extent of the compiled stream nodes,
+    buffered.
+    """
+    area = gpd.read_file(boundary_path).union_all()
+    if nodes_gdf is not None and len(nodes_gdf):
+        area = area.union(nodes_gdf.union_all().convex_hull)
+    area = area.buffer(FOOTPATH_BUFFER_DEG)
+    g = ox.graph_from_polygon(area, custom_filter=FOOTPATH_FILTER, simplify=True)
     _, e = ox.graph_to_gdfs(g)
     return e.reset_index()[["u", "v", "length", "geometry"]]
