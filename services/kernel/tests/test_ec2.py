@@ -1,5 +1,7 @@
-import numpy as np, pytest
-from upstream_kernel.ec2 import edge_weight, ec2_gain, greedy_select
+import numpy as np
+import pytest
+from upstream_kernel.ec2 import ec2_gain, edge_weight, greedy_select
+
 
 def test_edge_weight_is_zero_when_all_mass_is_in_one_class():
     p = np.array([0.5, 0.5]); classes = np.array([0, 0])
