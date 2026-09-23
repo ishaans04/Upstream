@@ -215,7 +215,7 @@ def _replan(episode_id: str) -> None:
     re-issuing a mission for a node that already has an open one would stack duplicates
     on the same volunteer every sweep.
     """
-    candidates = _latest_probe_candidates()
+    candidates = _latest_probe_candidates(_stream_for(episode_id))
     if not candidates:
         log.info("no probe candidates to re-plan episode %s from", episode_id)
         return
@@ -319,11 +319,18 @@ def _snapshots_for(mission_id: str) -> tuple[dict | None, dict | None]:
     return _snapshots_around(row[0]) if row and row[0] else (None, None)
 
 
-def _latest_probe_candidates() -> list[dict]:
+def _latest_probe_candidates(stream: str) -> list[dict]:
+    """The newest PROBE candidates *on this episode's stream*.
+
+    The stream filter is load-bearing, not tidiness. The live kernel writes a snapshot
+    every few seconds, so without it the newest row in the catchment wins and a
+    simulated episode re-plans from live belief - or a live one from a simulation. That
+    is exactly the boundary GC-10 exists to keep.
+    """
     with pool.connection() as c, c.cursor() as cur:
         cur.execute("""SELECT probe_candidates FROM posterior_snapshots
-                       WHERE catchment_id=%s ORDER BY ts DESC LIMIT 1""",
-                    (settings.catchment_id,))
+                       WHERE catchment_id=%s AND stream=%s ORDER BY ts DESC LIMIT 1""",
+                    (settings.catchment_id, stream))
         row = cur.fetchone()
     return list(row[0]) if row and row[0] else []
 

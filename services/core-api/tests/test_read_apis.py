@@ -216,3 +216,41 @@ def test_public_health_view_reports_exposure_windows(an_episode, emit_posterior)
     ep = next(e for e in body["episodes"] if e["episode_id"] == an_episode)
     assert ep["zone_windows"]["ZONE_000"]["window_hi"] > ep["zone_windows"]["ZONE_000"][
         "window_lo"]
+
+
+# ------------------------------------------------------- payload shape of list views
+
+
+@pytest.fixture
+def episode_with_curves(an_episode, emit_posterior):
+    """An episode whose zone windows carry PULSE's full exposure curve, as the kernel writes it."""
+    now = dt.datetime.now(dt.UTC).timestamp()
+    grid = [now + 300 * i for i in range(432)]
+    emit_posterior(p_event=0.95, zone_windows={
+        "ZONE_000": {"zone_id": "ZONE_000", "window_lo": now, "window_hi": now + 9600,
+                     "p_peak": 0.99, "pathways": ["recreation"],
+                     "t_grid": grid, "p_exposed": [0.5] * len(grid)}})
+    return an_episode
+
+
+def test_the_episode_list_summarises_zone_windows_instead_of_shipping_the_curves(
+        episode_with_curves):
+    """A list view carrying every PULSE time step is megabytes at a hundred episodes."""
+    rows = client.get("/episodes", params={"stream": STREAM}).json()
+    zw = next(r for r in rows if r["episode_id"] == episode_with_curves)["zone_windows"]
+    assert "t_grid" not in zw["ZONE_000"] and "p_exposed" not in zw["ZONE_000"]
+    assert zw["ZONE_000"]["window_hi"] > zw["ZONE_000"]["window_lo"]
+    assert zw["ZONE_000"]["p_peak"] == pytest.approx(0.99)
+
+
+def test_the_public_health_view_summarises_zone_windows_too(episode_with_curves):
+    body = client.get("/public-health/episodes", params={"stream": STREAM}).json()
+    ep = next(e for e in body["episodes"] if e["episode_id"] == episode_with_curves)
+    assert "t_grid" not in ep["zone_windows"]["ZONE_000"]
+    assert ep["zone_windows"]["ZONE_000"]["window_lo"] is not None
+
+
+def test_the_episode_detail_still_carries_the_full_curve_for_plotting(episode_with_curves):
+    """The console draws the curve, so the single-episode view keeps it."""
+    d = client.get(f"/episodes/{episode_with_curves}", params={"stream": STREAM}).json()
+    assert len(d["zone_windows"]["ZONE_000"]["t_grid"]) == 432

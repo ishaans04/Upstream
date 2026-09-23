@@ -22,6 +22,19 @@ router = APIRouter(tags=["episodes"])
 NOT_A_DIAGNOSIS = "Environmental context, not a diagnosis."     # GC-12, verbatim
 EVIDENCE_HORIZON_HOURS = 24
 
+# PULSE writes the whole exposure-probability curve into each zone window - on a 24 h
+# horizon that is 432 steps per zone, about 25 KB of JSON for a single episode. The
+# console plots that curve, so the single-episode view keeps it; a list of a hundred
+# episodes would be megabytes of it, so the list views carry the window and drop the
+# samples.
+_CURVE_KEYS = ("t_grid", "p_exposed")
+
+
+def _summarise_zone_windows(zone_windows: dict) -> dict:
+    return {zone_id: {k: v for k, v in w.items() if k not in _CURVE_KEYS}
+            if isinstance(w, dict) else w
+            for zone_id, w in (zone_windows or {}).items()}
+
 
 class SignoffIn(BaseModel):
     officer_id: str
@@ -44,7 +57,7 @@ def list_episodes(stream: str = "live", limit: int = 100):
     return [{"episode_id": r[0], "state": r[1], "opened_at": r[2], "state_changed_at": r[3],
              "clinical_window_end": r[4], "p_event": (r[5] or {}).get("p_event"),
              "top_sources": (r[5] or {}).get("top_sources", []),
-             "zone_windows": (r[5] or {}).get("zone_windows", {}),
+             "zone_windows": _summarise_zone_windows((r[5] or {}).get("zone_windows", {})),
              "fingerprint": r[6]} for r in rows]
 
 
@@ -127,7 +140,7 @@ def public_health_episodes(stream: str = "live", limit: int = 100):
         rows = cur.fetchall()
     episodes = []
     for episode_id, state, opened_at, window_end, summary in rows:
-        zone_windows = (summary or {}).get("zone_windows", {})
+        zone_windows = _summarise_zone_windows((summary or {}).get("zone_windows", {}))
         pathways = sorted({p for w in zone_windows.values()
                            if isinstance(w, dict) for p in w.get("pathways", [])})
         episodes.append({"episode_id": episode_id, "state": state, "opened_at": opened_at,

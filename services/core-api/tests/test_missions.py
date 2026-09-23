@@ -253,3 +253,32 @@ def test_a_failing_push_does_not_fail_the_mission(an_episode, candidates, a_volu
                                {"p256dh": "not-a-key", "auth": "nope"}})
     specs = create_missions_from_probe(an_episode, candidates(1))
     assert specs and count_missions(an_episode) == 1
+
+
+def test_a_replan_reads_only_its_own_streams_belief(an_episode, candidates, a_volunteer,
+                                                    mission_row, count_missions,
+                                                    seed_snapshot, fast_clock, _network,
+                                                    db_conn):
+    """GC-10: the live kernel writes constantly; a sim episode must not re-plan from it.
+
+    Without a stream filter the newest snapshot in the catchment wins, so whichever
+    stream wrote last decides where a volunteer is sent.
+    """
+    from upstream_api.config import settings
+    from upstream_api.workflows.missions import create_missions_from_probe
+
+    a_volunteer("vol-1")
+    m = create_missions_from_probe(an_episode, candidates(1))[0]
+    seed_snapshot({"__none__": 0.2, _network.entry_nodes[0]: 0.8},
+                  probe=candidates(1, window_s=7200))
+    # A later snapshot on the *live* stream, with no candidates to re-plan from.
+    with db_conn.cursor() as cur:
+        cur.execute("""INSERT INTO posterior_snapshots (ts,fingerprint,episode_id,
+            catchment_id,stream,as_of_seq,network_version,kernel_version,params_version,
+            p_event,source_marginals,zone_windows,probe_candidates,explanation)
+            VALUES (now()+interval '1 hour','sha256:live-newer',NULL,%s,'live',1,
+                    'net','test','params',0.5,'{}','{}','[]','{}')""",
+                    (settings.catchment_id,))
+    fast_clock.advance(minutes=90)
+    assert mission_row(m.mission_id)["status"] == "expired"
+    assert count_missions(an_episode) > 1, "the sim episode must re-plan from the sim belief"
