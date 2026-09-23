@@ -37,5 +37,12 @@ jobs:
 
       - run: uv run ruff check .
       - run: uv run alembic -c db/alembic.ini upgrade head
+
+      # data/artifacts is git-ignored (the network is rebuildable, GC-6), so a fresh
+      # checkout has nothing for the API tests to snap observations against. Compile a
+      # deterministic synthetic catchment rather than calling Overpass from CI.
+      - name: Compile a synthetic network artefact
+        run: uv run python -m upstream_kernel.compile.cli --synthetic line --skip-db
+
       - run: uv run pytest -q
   # `fhir` job added in Phase 7; `bench` job added in Phase 9.

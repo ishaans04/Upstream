@@ -19,6 +19,7 @@ from pyproj import Geod
 from .compiler import compile_network
 from .loader import save_network
 from .osm import fetch_footpaths, fetch_waterways
+from .synthetic import SYNTHETIC_BUILDERS
 from .zones import build_zones
 
 _GEOD = Geod(ellps="WGS84")
@@ -34,15 +35,22 @@ def main() -> None:
     ap.add_argument("--out", default="data/artifacts/network.npz")
     ap.add_argument("--skip-db", action="store_true",
                     help="compile and save the .npz only; do not touch PostGIS or the log")
+    ap.add_argument("--synthetic", choices=sorted(SYNTHETIC_BUILDERS),
+                    help="compile a deterministic offline network instead of fetching OSM. "
+                         "CI uses this: data/artifacts is git-ignored, so a fresh checkout "
+                         "has no network for the API tests to snap against.")
     a = ap.parse_args()
     if not a.catchment:
         ap.error("--catchment is required (or set CATCHMENT_ID)")
 
-    nodes, edges = fetch_waterways(a.boundary)
-    outfalls = _snap_outfalls(gpd.read_file(a.outfalls), nodes)
-    # Outfall points are snapped onto the stream graph and become entry nodes.
-    nodes.loc[nodes["node_id"].isin(outfalls["node_id"]), "node_type"] = "outfall"
-    zones = build_zones(a.boundary, a.overrides, nodes)
+    if a.synthetic:
+        nodes, edges, outfalls, zones = SYNTHETIC_BUILDERS[a.synthetic]()
+    else:
+        nodes, edges = fetch_waterways(a.boundary)
+        outfalls = _snap_outfalls(gpd.read_file(a.outfalls), nodes)
+        # Outfall points are snapped onto the stream graph and become entry nodes.
+        nodes.loc[nodes["node_id"].isin(outfalls["node_id"]), "node_type"] = "outfall"
+        zones = build_zones(a.boundary, a.overrides, nodes)
     net = compile_network(nodes, edges, outfalls, zones, catchment_id=a.catchment)
 
     os.makedirs(os.path.dirname(a.out) or ".", exist_ok=True)
@@ -50,8 +58,11 @@ def main() -> None:
 
     if not a.skip_db:
         dsn = os.environ["DATABASE_URL"]
+        footpaths = (gpd.GeoDataFrame({"u": [], "v": [], "length": [], "geometry": []},
+                                      crs="EPSG:4326")
+                     if a.synthetic else fetch_footpaths(a.boundary))
         _write_postgis(dsn, net.version, nodes, edges, outfalls, zones,
-                       fetch_footpaths(a.boundary), a.catchment)
+                       footpaths, a.catchment)
         with psycopg.connect(dsn, autocommit=True) as c, c.cursor() as cur:
             cur.execute(
                 "SELECT append_event(%s,'live',%s,'NetworkVersionPublished',1,%s,%s,NULL,NULL)",
