@@ -30,7 +30,13 @@ def pulse(post, net, tables, params, *, forward_hours: int = 12, step_s: int = 3
     f = post.flow_idx
     decay = params.decay_per_hour["fecal_indicator"] / 3600.0
     k = np.clip(g.entry_k, 0, None)
-    t_grid = np.arange(g.horizon_end - 3600, g.horizon_end + forward_hours * 3600, step_s,
+    # The grid must reach back to the earliest moment any hypothesis could have put
+    # contaminant in the water, not to an arbitrary hour before now. Starting at
+    # horizon_end - 3600 truncated the leading edge of the arrival curve whenever the
+    # plume passed earlier than that, and `window_lo` then reported where the grid
+    # began rather than when the zone was reached - two zones 557 s apart in travel
+    # time both came back with the same opening time.
+    t_grid = np.arange(g.horizon_start, g.horizon_end + forward_hours * 3600, step_s,
                        dtype=np.float64)
     storm = FLOW_CONDITIONS[f] == "storm"
 

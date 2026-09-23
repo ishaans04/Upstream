@@ -18,3 +18,4 @@ bench/results/
 CLAUDE.md
 changelog.md
 .env.host
+.superpowers/
