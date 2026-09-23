@@ -54,7 +54,7 @@ def compile_network(nodes_gdf, edges_gdf, outfalls_gdf, zones_gdf, catchment_id:
     N = len(node_ids)
 
     edges = np.array([[node_index[f], node_index[t]]
-                      for f, t in zip(edges_gdf["from_node"], edges_gdf["to_node"])],
+                      for f, t in zip(edges_gdf["from_node"], edges_gdf["to_node"], strict=True)],
                      dtype=np.int32)
     length = np.asarray(edges_gdf["length_m"], dtype=np.float64)
     flow = np.asarray(edges_gdf["mean_flow_m3s"], dtype=np.float64)

@@ -56,7 +56,7 @@ def line_network_gdfs(n_nodes: int = 400, n_entries: int = 40):
          "length_m": [250.0] * (n_nodes - 1),
          "mean_flow_m3s": [0.05] * (n_nodes - 1),
          "geometry": [LineString([coords[a], coords[b]])
-                      for a, b in zip(ids[:-1], ids[1:])]}, crs="EPSG:4326")
+                      for a, b in zip(ids[:-1], ids[1:], strict=True)]}, crs="EPSG:4326")
     outfalls = gpd.GeoDataFrame(
         {"outfall_id": entry_ids, "node_id": entry_ids,
          "source_type": ["cso"] * n_entries, "base_rate": [0.002] * n_entries,

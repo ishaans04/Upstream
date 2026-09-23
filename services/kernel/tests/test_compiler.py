@@ -23,7 +23,7 @@ def test_upstream_mask_is_transitive():
 def test_downstream_path_edges_are_contiguous():
     net = compile_network(*toy_gdfs(), catchment_id="toy")
     path = net.downstream_path[net.node_index["O14"]]
-    for a, b in zip(path[:-1], path[1:]):
+    for a, b in zip(path[:-1], path[1:], strict=True):
         assert net.edges[a][1] == net.edges[b][0]
 
 
