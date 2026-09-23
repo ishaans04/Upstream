@@ -52,6 +52,33 @@ web/                        Next.js console + mission PWA
 `packages/upstream-shared` holds *only* schemas and constants — that is what stops event payloads
 drifting between producer and consumer.
 
+## Stated assumptions
+
+The PRD requires assumptions to be stated rather than buried (R4). These are the load-bearing
+ones:
+
+**Hydraulics are analytic, not simulated.** Velocities come from Manning's equation with a
+uniform hydraulic radius and a single default channel slope, scaled by flow condition
+(dry / wet / storm). A calibrated EPA SWMM model for an arbitrary OSM catchment cannot be
+built inside the project window, and the posterior needs only *relative* travel times with
+honest uncertainty. `services/kernel/upstream_kernel/physics/swmm.py` is the seam: a pilot
+city with a real `.inp` file drops it in and the kernel does not change.
+
+**Flow direction comes from OSM convention.** OpenStreetMap waterways are digitised
+downstream, and the compiler trusts that. There is no elevation pipeline. Reversed reaches
+are corrected by hand in `data/catchment/edge_orientation_overrides.json`.
+
+**The stream graph is reduced to a tree.** Braided channels and distributaries are pruned to
+a single outflow per node, because the travel-time model walks one downstream path.
+
+**Travel-time uncertainty is Fickian.** The plume's standard deviation grows as the square
+root of elapsed travel time, exactly: `sigma = dispersion_coeff * sqrt(tau)`. Phase 9
+recalibrates `dispersion_coeff` against the 80%-window coverage target.
+
+**Every outfall in the pilot catchment is synthetic.** The water utility has not published
+CSO or storm-outfall locations for the Ribeira de Coselhas, so they are invented at
+plausible positions and carry `is_synthetic: true`. The console labels them (PRD R2).
+
 ## Safety
 
 The system never issues advisories, never contacts patients and never names a polluter. Every
