@@ -3,6 +3,7 @@ import os
 
 import psycopg
 import pytest
+from psycopg.types.json import Jsonb
 from upstream_shared.codes import ObservationMethod
 from upstream_shared.events import EventEnvelope, EventType
 from upstream_shared.evidence import EvidencePayload, ObservationResult
@@ -282,3 +283,122 @@ def fast_clock(db_conn):
             timers.sweep_due()
 
     return _Clock()
+
+
+# ------------------------------------------------------------- Phase 6: missions
+
+
+@pytest.fixture
+def an_episode(emit_posterior, episode_row):
+    emit_posterior(p_event=0.94)
+    return episode_row()["episode_id"]
+
+
+@pytest.fixture
+def a_volunteer(_pool, db_conn, _network):
+    """A volunteer who lives near one entry node (PRD 14.2: a coarse area, never GPS).
+
+    Neighbourhood-sized on purpose. We only ever know an area, so routing has to place
+    the person at its centre; a coarse area the size of the whole catchment would put
+    that centre kilometres from anywhere real and no one would ever be assigned.
+    """
+    made: list[str] = []
+
+    def _make(volunteer_id="vol-1", *, push=None, available=True, near=0):
+        lon, lat = _network.lonlat[int(_network.entry_idx[near % len(_network.entry_idx)])]
+        pad = 0.01                      # about 1.1 km: a neighbourhood
+        box = (f"POLYGON(({lon - pad} {lat - pad},{lon + pad} {lat - pad},"
+               f"{lon + pad} {lat + pad},{lon - pad} {lat + pad},{lon - pad} {lat - pad}))")
+        now = dt.datetime.now(dt.UTC)
+        window = ((now - dt.timedelta(hours=1), now + dt.timedelta(hours=6)) if available
+                  else (now + dt.timedelta(days=2), now + dt.timedelta(days=3)))
+        with db_conn.cursor() as cur:
+            cur.execute("""INSERT INTO volunteers (volunteer_id,display_name,coarse_area,
+                           available_from,available_to,reliability,push_subscription)
+                           VALUES (%s,%s,ST_GeomFromText(%s,4326),%s,%s,0.8,%s)
+                           ON CONFLICT (volunteer_id) DO UPDATE SET
+                             coarse_area=EXCLUDED.coarse_area,
+                             available_from=EXCLUDED.available_from,
+                             available_to=EXCLUDED.available_to,
+                             push_subscription=EXCLUDED.push_subscription""",
+                        (volunteer_id, volunteer_id, box, window[0], window[1],
+                         Jsonb(push) if push else None))
+        made.append(volunteer_id)
+        return volunteer_id
+
+    yield _make
+    with db_conn.cursor() as cur:
+        for vid in made:
+            cur.execute("DELETE FROM volunteers WHERE volunteer_id=%s", (vid,))
+
+
+@pytest.fixture
+def candidates(_network):
+    """PROBE-shaped candidates over real network nodes.
+
+    Deliberately *not* carrying `lonlat`: PROBE does not produce one (probe.py), and the
+    mission layer is what has to resolve a node id to a place on the map.
+    """
+    now = dt.datetime.now(dt.UTC).timestamp()
+
+    def _make(n=2, *, window_s=3600):
+        out = []
+        for i in range(n):
+            node = _network.node_ids[int(_network.entry_idx[i % len(_network.entry_idx)])]
+            out.append({"candidate_id": f"{node}@{int(now)}-{i}", "node_id": node,
+                        "window_start": now, "window_end": now + window_s,
+                        "methods": ["field_test"], "mode": "protect",
+                        "ec2_gain": 0.5 - 0.1 * i, "gain_per_cost": 1e-4,
+                        "walk_cost_s": 600.0,
+                        "expected_effect": "expected to rule out about 2 warning patterns"})
+        return out
+
+    return _make
+
+
+@pytest.fixture
+def mission_row(db_conn):
+    cols = ("mission_id", "episode_id", "node_id", "status", "assignee_id", "methods",
+            "expected_gain", "realised_gain", "window_start", "window_end")
+
+    def _get(mission_id):
+        with db_conn.cursor() as cur:
+            cur.execute(f"SELECT {','.join(cols)} FROM missions WHERE mission_id=%s",
+                        (mission_id,))
+            row = cur.fetchone()
+        return dict(zip(cols, row, strict=True)) if row else None
+
+    return _get
+
+
+@pytest.fixture
+def count_missions(db_conn):
+    def _count(episode_id):
+        with db_conn.cursor() as cur:
+            cur.execute("SELECT count(*) FROM missions WHERE episode_id=%s", (episode_id,))
+            return cur.fetchone()[0]
+
+    return _count
+
+
+@pytest.fixture
+def seed_snapshot(db_conn, _network):
+    """Write a posterior snapshot with chosen source marginals."""
+    from upstream_api.config import settings
+
+    def _seed(marginals: dict, *, probe: list | None = None, as_of_seq: int = 0,
+              ts: dt.datetime | None = None, explanation: dict | None = None):
+        with db_conn.cursor() as cur:
+            cur.execute("""INSERT INTO posterior_snapshots (ts,fingerprint,episode_id,
+                catchment_id,stream,as_of_seq,network_version,kernel_version,params_version,
+                p_event,source_marginals,zone_windows,probe_candidates,explanation)
+                VALUES (%s,%s,NULL,%s,%s,%s,'net','test','params',%s,%s,%s,%s,%s)""",
+                        (ts or dt.datetime.now(dt.UTC), f"sha256:seed-{as_of_seq}",
+                         settings.catchment_id, STREAM, as_of_seq,
+                         1.0 - marginals.get("__none__", 0.0), Jsonb(marginals), Jsonb({}),
+                         Jsonb(probe or []), Jsonb(explanation or {})))
+
+    yield _seed
+    with db_conn.cursor() as cur:
+        cur.execute("DELETE FROM posterior_snapshots WHERE stream=%s AND kernel_version='test'",
+                    (STREAM,))

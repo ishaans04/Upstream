@@ -6,6 +6,10 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from upstream_shared.events import EventEnvelope, EventType
 
+from .api.episodes import router as episodes_router
+from .api.missions import router as missions_router
+from .api.network import router as network_router
+from .api.replay import router as replay_router
 from .config import settings
 from .db import close_pool, open_pool
 from .eventlog import store
@@ -97,6 +101,10 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Upstream Core API", version="0.1.0", lifespan=lifespan)
 app.include_router(ingest_router)
+app.include_router(episodes_router)
+app.include_router(replay_router)
+app.include_router(missions_router)
+app.include_router(network_router)
 
 
 @app.get("/healthz")
