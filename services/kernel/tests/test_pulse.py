@@ -60,11 +60,26 @@ def test_downstream_zone_window_starts_later_than_the_nearer_one(strong):
 
 
 def test_window_is_an_80_percent_credible_interval(strong):
+    """GC-11: the window holds 80% of the mass, and is the narrowest one that does.
+
+    Asserted as a property rather than a tolerance band. The interval's ends fall on
+    grid steps, so the mass it holds cannot land exactly on 0.80 and the achievable
+    minimum moves with the shape of the arrival curve - a fixed band like 0.78-0.82 was
+    tighter than the grid can honestly deliver on a steep edge, and failed on one
+    platform while passing on another. "At least 80%, and removing either end would
+    drop it below 80%" pins the same thing exactly, at any resolution.
+    """
     post, net, params, tables, _ = strong
     z = pulse(post, net, tables, params)["ZONE_A"]
     t, p = np.array(z["t_grid"]), np.array(z["p_exposed"])
-    inside = p[(t >= z["window_lo"]) & (t <= z["window_hi"])].sum()
-    assert 0.78 <= inside / p.sum() <= 0.82
+    inside = (t >= z["window_lo"]) & (t <= z["window_hi"])
+    held = p[inside].sum() / p.sum()
+    assert held >= 0.80
+    assert held <= 0.85, "GC-11 coverage ceiling"
+
+    idx = np.flatnonzero(inside)
+    for shrunk in (idx[1:], idx[:-1]):
+        assert p[shrunk].sum() / p.sum() < 0.80, "the window is wider than it needs to be"
 
 
 def test_uncertain_posterior_gives_a_wider_window_than_a_sharp_one():

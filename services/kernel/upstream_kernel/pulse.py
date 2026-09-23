@@ -73,10 +73,33 @@ def pulse(post, net, tables, params, *, forward_hours: int = 12, step_s: int = 3
 
 
 def _credible_window(t, w, q: float = 0.80):
-    """Narrowest central interval holding q of the exposure-probability mass."""
+    """Narrowest central interval holding q of the exposure-probability mass.
+
+    The equal-tailed quantile indices are only a starting point. Each end of the
+    interval carries a whole grid step, so the interval they define always holds *more*
+    than q - by up to two steps' worth of mass, which on a steep arrival edge is a
+    couple of percent. Left uncorrected the window is quietly wider than the 80% it
+    claims (GC-11), so each end is pulled in as far as it will go while the interval
+    still holds q.
+    """
     if w.max() < EXPOSURE_THRESHOLD_C or w.sum() <= 0:
         return None, None
-    c = np.cumsum(w) / w.sum()
+    total = w.sum()
+    c = np.cumsum(w) / total
     lo_i = int(np.searchsorted(c, (1 - q) / 2))
     hi_i = int(min(np.searchsorted(c, 1 - (1 - q) / 2), len(t) - 1))
+
+    def _mass(lo: int, hi: int) -> float:
+        return float(c[hi] - (c[lo - 1] if lo > 0 else 0.0))
+
+    # Shrink from whichever end costs less, while the interval still holds q.
+    while hi_i > lo_i:
+        drop_lo = _mass(lo_i + 1, hi_i)
+        drop_hi = _mass(lo_i, hi_i - 1)
+        if drop_lo >= q and drop_lo >= drop_hi:
+            lo_i += 1
+        elif drop_hi >= q:
+            hi_i -= 1
+        else:
+            break
     return float(t[lo_i]), float(t[hi_i])
