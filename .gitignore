@@ -19,3 +19,8 @@ CLAUDE.md
 changelog.md
 .env.host
 .superpowers/
+
+# FHIR build artefacts (Phase 7). The vendored IG tarball IS committed.
+fhir/.validator/
+fhir/validation-report.json
+fhir/output/

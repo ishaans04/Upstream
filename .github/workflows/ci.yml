@@ -49,4 +49,41 @@ jobs:
           uv run python -m upstream_kernel.physics.cli
 
       - run: uv run pytest -q
-  # `fhir` job added in Phase 7; `bench` job added in Phase 9.
+
+  # GC-3: zero validator errors against the OneAquaHealth IG. This job is the
+  # gate Track 7 of the submission depends on, so it fails the build on any
+  # error and uploads the report either way.
+  fhir:
+    runs-on: ubuntu-latest
+    env:
+      OAH_IG_VERSION: 0.1.0-ci-build
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "20" }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: "17" }
+      - run: npm install -g fsh-sushi@3
+
+      # Cache the validator jar (~200 MB) and the FHIR package cache. Cold, the
+      # validator spends about seven minutes downloading core packages before
+      # it validates anything.
+      - uses: actions/cache@v4
+        with:
+          path: |
+            fhir/.validator
+            ~/.fhir/packages
+          key: fhir-tools-${{ hashFiles('fhir/sushi-config.yaml', 'fhir/vendor/hl7.eu.fhir.oah.tgz') }}
+          restore-keys: fhir-tools-
+
+      - name: The vendored OAH IG resolves
+        run: ./fhir/tests/test_ig_resolves.sh
+
+      - name: Zero validator errors (GC-3)
+        run: ./fhir/scripts/validate.sh
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: validation-report, path: fhir/validation-report.json }
+
+  # `bench` job added in Phase 9.

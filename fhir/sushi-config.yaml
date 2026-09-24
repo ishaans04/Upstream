@@ -1,0 +1,33 @@
+# fhir/sushi-config.yaml
+#
+# Upstream's FHIR Implementation Guide. Every profile here derives from the
+# OneAquaHealth IG (GC-2); nothing invents a parallel model.
+#
+# `hl7.eu.fhir.oah` is not published to packages.fhir.org, so it is vendored at
+# vendor/hl7.eu.fhir.oah.tgz and installed into the local FHIR package cache by
+# scripts/install-vendored-ig.sh before sushi runs. See that script for why.
+id: upstream.onehealth
+canonical: https://upstream-onehealth.example
+name: UpstreamOneHealth
+title: "Upstream - Exposure Episodes for One Health"
+description: >-
+  Upstream turns citizen, sensor and laboratory observations of a river
+  catchment into probabilistic exposure episodes, and publishes those episodes
+  as FHIR so that clinicians receive environmental context alongside a patient.
+status: draft
+version: 0.1.0
+fhirVersion: 4.0.1
+copyrightYear: 2026+
+releaseLabel: ci-build
+license: CC0-1.0
+jurisdiction: http://unstats.un.org/unsd/methods/m49/m49.htm#150 "Europe"
+publisher:
+  name: Upstream (IEEE OneAquaHealth Hackathon 2026)
+dependencies:
+  hl7.eu.fhir.oah: 0.1.0-ci-build
+  hl7.fhir.uv.subscriptions-backport.r4: 1.1.0
+parameters:
+  show-inherited-invariants: false
+menu:
+  Home: index.html
+  Artifacts: artifacts.html

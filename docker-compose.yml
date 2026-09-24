@@ -79,10 +79,14 @@ services:
       HAPI_FHIR_FHIR_VERSION: R4
       HAPI_FHIR_VALIDATION_REQUESTS_ENABLED: "true"
       HAPI_FHIR_SUBSCRIPTION_RESTHOOK_ENABLED: "true"
-      # Phase 7 resolves the OAH IG version and re-enables these two lines.
+      # The OAH IG is not on packages.fhir.org, so HAPI is pointed at the
+      # package Upstream vendors from the IG's source (fhir/scripts/vendor-oah-ig.sh).
       # An empty version makes the package installer abort at boot.
-      # HAPI_FHIR_IMPLEMENTATIONGUIDES_OAH_NAME: hl7.eu.fhir.oah
-      # HAPI_FHIR_IMPLEMENTATIONGUIDES_OAH_VERSION: ${OAH_IG_VERSION}
+      HAPI_FHIR_IMPLEMENTATIONGUIDES_OAH_NAME: hl7.eu.fhir.oah
+      HAPI_FHIR_IMPLEMENTATIONGUIDES_OAH_VERSION: ${OAH_IG_VERSION}
+      HAPI_FHIR_IMPLEMENTATIONGUIDES_OAH_URL: file:///app/fhir-ig/hl7.eu.fhir.oah.tgz
+    volumes:
+      - ./fhir/vendor:/app/fhir-ig:ro
     depends_on: { db: { condition: service_healthy } }
     ports: ["8080:8080"]
 
