@@ -7,6 +7,7 @@ tables:    ; docker compose run --rm kernel python -m upstream_kernel.physics.cl
 sim:       ; docker compose run --rm api python -m upstream_sim.run --scenarios 50
 bench:     ; docker compose run --rm api python -m benchmarks.runner --out bench/results
 validate:  ; ./fhir/scripts/validate.sh
+fhir-load: ; ./fhir/scripts/load-into-hapi.sh
 demo:      ; docker compose run --rm api python -m upstream_sim.demo_scenario
 
-.PHONY: up down migrate test compile tables sim bench validate demo
+.PHONY: up down migrate test compile tables sim bench validate fhir-load demo

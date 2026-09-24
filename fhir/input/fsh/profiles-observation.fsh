@@ -80,3 +80,32 @@ equally; it is an input to the model, not a judgement about a person."
 * ^context[0].expression = "Observation"
 * value[x] only decimal
 * valueDecimal ^short = "Reliability in [0, 1] as used by the kernel for this observation"
+
+Profile: UpstreamRetractedObservation
+Parent: Observation
+Id: UpstreamRetractedObservation
+Title: "Upstream Retracted Observation"
+Description: "An observation whose author withdrew it. It keeps everything the original
+said and adds the fact that it was withdrawn (GC-5, FR-10): nothing is ever deleted, and
+an episode computed before the retraction has to stay explicable afterwards.
+
+It cannot derive from the OneAquaHealth indicator observation, which pattern-fixes
+Observation.status to #final and so forbids the whole FHIR correction lifecycle. That is
+not a parallel model of an indicator observation - it is the record of one being
+withdrawn, and a withdrawn reading is no longer a OneAquaHealth indicator."
+* ^url = "https://upstream-onehealth.example/StructureDefinition/UpstreamRetractedObservation"
+* ^status = #draft
+* ^experimental = false
+
+* status = #entered-in-error (exactly)
+* code 1..1 MS
+* code from UpstreamIndicatorVS (extensible)
+* subject 1..1 MS
+* subject only Reference(UpstreamExposureZone or $oah-location)
+* effectiveDateTime 1..1 MS
+* effectiveDateTime ^short = "Event time of the observation that was withdrawn (GC-4)"
+* issued 1..1 MS
+* issued ^short = "Record time of the observation that was withdrawn (GC-4)"
+* method 1..1 MS
+* method from UpstreamObservationMethodVS (required)
+* performer 1..* MS

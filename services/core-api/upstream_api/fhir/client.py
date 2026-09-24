@@ -35,10 +35,18 @@ def _describe(issue: dict) -> str:
     return f"{where}: {text}"
 
 
+# A $validate against a server holding a full IG plus the HL7 extensions pack
+# is not a quick call, and it gets slower while the server is busy. Publishing
+# is off the critical path -- it happens after a state change is already
+# durable -- so it can afford to wait. The 500 ms budget in GC-9 is CDS Hooks',
+# and nothing here is on that path.
+DEFAULT_TIMEOUT_S = 90.0
+
+
 class FhirClient:
-    def __init__(self, base_url: str | None = None, *, timeout: float = 30.0):
+    def __init__(self, base_url: str | None = None, *, timeout: float | None = None):
         self.base = (base_url or settings.hapi_base_url).rstrip("/")
-        self.timeout = timeout
+        self.timeout = timeout if timeout is not None else DEFAULT_TIMEOUT_S
 
     def validate(self, resource: dict) -> dict:
         """Ask the server whether it would accept this resource."""
@@ -79,6 +87,34 @@ class FhirClient:
             "id": resource_id,
             "version": _version_from(response),
         }
+
+    def put_unchanged_once(self, resource: dict, *, compare: tuple[str, ...]) -> dict:
+        """Write only if the server does not already hold this resource unchanged.
+
+        An episode's basis is every observation in the kernel's 24-hour horizon,
+        and a busy catchment has hundreds. Observations are immutable apart from
+        a retraction flipping the status, so re-validating and re-writing all of
+        them on every state change is work with no result -- and each write costs
+        a full $validate. The comparison is deliberately narrow: only the named
+        fields are checked, and anything unexpected falls through to a real write.
+        """
+        resource_type, resource_id = resource["resourceType"], resource["id"]
+        try:
+            response = httpx.get(
+                f"{self.base}/{resource_type}/{resource_id}", timeout=self.timeout
+            )
+        except httpx.HTTPError:
+            return self.put(resource)
+
+        if response.status_code == 200:
+            existing = response.json()
+            if all(existing.get(field) == resource.get(field) for field in compare):
+                return {
+                    "resourceType": resource_type,
+                    "id": resource_id,
+                    "version": _version_from(response),
+                }
+        return self.put(resource)
 
     def post(self, resource: dict) -> dict:
         """Validate, then create at a server-assigned id."""

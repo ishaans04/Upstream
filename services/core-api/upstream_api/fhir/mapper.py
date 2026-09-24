@@ -97,11 +97,18 @@ def fhir_id(value: str) -> str:
 
 
 def zone_location_id(zone_id: str) -> str:
-    return f"zone-{fhir_id(zone_id)}"
+    """`ZONE_000` -> `zone-000`, `A` -> `zone-a`.
+
+    The prefix keeps zone Locations apart from node Locations in a server that
+    holds both; adding it to an id that already says "zone" would publish
+    `zone-zone-000`, and a published id is not something to tidy up later.
+    """
+    slug = fhir_id(zone_id)
+    return slug if slug.startswith("zone-") else f"zone-{slug}"
 
 
 def zone_group_id(zone_id: str) -> str:
-    return f"zone-{fhir_id(zone_id)}-population"
+    return f"{zone_location_id(zone_id)}-population"
 
 
 def node_location_id(node_id: str) -> str:
@@ -250,9 +257,20 @@ def evidence_to_observation(ev, *, retracted: bool) -> dict:
     method = p["method"]
     obs = {
         "resourceType": "Observation",
-        "id": observation_id(ev.event_id),
-        "meta": {"profile": [f"{SD}/UpstreamEvidenceObservation"]},
         # FR-10, GC-5: a retraction changes the status. Nothing is deleted.
+        #
+        # It also changes the profile. The OneAquaHealth indicator observation
+        # pattern-fixes Observation.status to #final, so a withdrawn reading
+        # cannot conform to it -- and should not: it is no longer an indicator,
+        # it is the record of one being withdrawn.
+        "id": observation_id(ev.event_id),
+        "meta": {
+            "profile": [
+                f"{SD}/UpstreamRetractedObservation"
+                if retracted
+                else f"{SD}/UpstreamEvidenceObservation"
+            ]
+        },
         "status": "entered-in-error" if retracted else "final",
         "category": [{"coding": [{"system": OBS_CATEGORY_CS, "code": _category(method)}]}],
         "code": {"coding": [{"system": OAH_CS, "code": _indicator_code(p)}]},

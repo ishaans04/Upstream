@@ -140,6 +140,27 @@ event time and the record time differ by two days, which is why both are mandato
 * valueQuantity.system = "http://unitsofmeasure.org"
 * valueQuantity.code = #"{CFU}/(100.mL)"
 
+Instance: upstream-evidence-withdrawn
+InstanceOf: UpstreamRetractedObservation
+Usage: #example
+Title: "A citizen report the observer later withdrew"
+Description: "The reporter realised the discolouration was from roadworks upstream and
+withdrew the report. The observation is not deleted and it is not edited: its status says
+it was entered in error, and it stays readable because version 2 of the episode was
+computed from it (GC-5, FR-10).
+
+It is a UpstreamRetractedObservation rather than a UpstreamEvidenceObservation because the
+OneAquaHealth indicator profile pattern-fixes status to #final. A withdrawn reading is no
+longer an indicator."
+* status = #entered-in-error
+* category = $obs-category#survey "Survey"
+* code = $oah-temporary#foam "Foam/colour/smell"
+* subject = Reference(upstream-zone-A)
+* effectiveDateTime = "2026-09-20T08:31:00+01:00"
+* issued = "2026-09-20T08:33:14+01:00"
+* method = $observation-method#citizen_photo "Citizen photograph"
+* performer = Reference(upstream-programme)
+
 // --- The episode -----------------------------------------------------------
 
 Instance: upstream-episode-2841-v1

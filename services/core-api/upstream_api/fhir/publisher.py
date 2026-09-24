@@ -12,6 +12,7 @@ import datetime as dt
 import json
 import logging
 
+from upstream_kernel.worker import HORIZON_HOURS
 from upstream_shared.events import EventEnvelope, EventType
 
 from ..config import settings
@@ -48,13 +49,13 @@ def publish_episode(episode_id: str) -> dict:
     client = FhirClient()
 
     evidence = _evidence_for(episode, snapshot)
-    observation_refs = []
-    for event, retracted in evidence:
-        written = client.put(evidence_to_observation(event, retracted=retracted))
-        observation_refs.append(f"Observation/{written['id']}")
 
-    # Every node an Observation or a source ranking points at must exist, or the
-    # published episode has dangling references the moment anyone follows one.
+    # Places first, and not only for tidiness. HAPI rejects a reference to a
+    # resource it does not hold (HAPI-1094) rather than creating a placeholder,
+    # so an Observation written before the Location it is about is refused
+    # outright -- and every node an Observation or a source ranking points at
+    # must exist anyway, or the published episode has dangling references the
+    # moment a reader follows one.
     for node_id in _referenced_nodes(evidence, snapshot):
         client.put(_node_location(net, node_id))
 
@@ -67,6 +68,23 @@ def publish_episode(episode_id: str) -> dict:
             )
         )
         client.put(zone_to_group(net, zone_id, name=geometry.get("population_name")))
+
+    # Everything is published, including what was withdrawn; only what the
+    # kernel actually used goes in the basis. The posterior was computed with
+    # retracted evidence excluded, so listing it as the basis would claim the
+    # episode rests on something it does not (GC-6) -- while dropping it from
+    # the server altogether would break the references in every earlier version
+    # of the episode (GC-5).
+    observation_refs = []
+    retracted_refs = []
+    for event, retracted in evidence:
+        written = client.put_unchanged_once(
+            evidence_to_observation(event, retracted=retracted),
+            compare=("status", "meta"),
+        )
+        (retracted_refs if retracted else observation_refs).append(
+            f"Observation/{written['id']}"
+        )
 
     snapshot = snapshot | {
         "evidence_ids": [ref.split("/", 1)[1] for ref in observation_refs]
@@ -82,7 +100,9 @@ def publish_episode(episode_id: str) -> dict:
         )
     )
 
-    _record_publication(episode, written, len(observation_refs))
+    _record_publication(
+        episode, written, len(observation_refs), len(retracted_refs)
+    )
     return written
 
 
@@ -157,10 +177,13 @@ def _latest_snapshot(episode_id: str, *, stream: str) -> dict | None:
 def _evidence_for(episode: dict, snapshot: dict) -> list[tuple[object, bool]]:
     """Exactly the evidence this snapshot was computed from, retracted included.
 
-    The cut is the snapshot's `as_of_seq`, not a time window: that is the same
-    prefix of the log the kernel read, so the published basis and the posterior
-    cannot disagree (GC-6). A later event changes nothing until a later
-    snapshot exists to publish.
+    The window is the kernel's own: HORIZON_HOURS back from the moment the
+    snapshot was computed, cut at the snapshot's `as_of_seq`. Both halves
+    matter. The posterior is computed over the whole catchment for that horizon,
+    not over one episode's evidence, so anything narrower would publish a basis
+    the episode does not actually rest on; and `as_of_seq` is the same prefix of
+    the log the kernel read, so a later event changes nothing until a later
+    snapshot exists to publish (GC-6).
 
     GC-5: a retraction is published as `entered-in-error`, not as an absence.
     An episode computed before the retraction has to stay explicable afterwards,
@@ -170,7 +193,7 @@ def _evidence_for(episode: dict, snapshot: dict) -> list[tuple[object, bool]]:
         catchment_id=episode["catchment_id"],
         stream=episode["stream"],
         as_of_seq=snapshot["as_of_seq"],
-        since=episode["opened_at"] - _EVIDENCE_LOOKBACK,
+        since=snapshot["ts"] - dt.timedelta(hours=HORIZON_HOURS),
     )
     retracted = {
         str(e.payload["retracts_event_id"])
@@ -184,10 +207,6 @@ def _evidence_for(episode: dict, snapshot: dict) -> list[tuple[object, bool]]:
     ]
 
 
-# Evidence never predates the plume by more than the catchment's travel time
-# plus the sensor baseline window. Two days is generous for both, and it keeps
-# a republish from walking the whole log.
-_EVIDENCE_LOOKBACK = dt.timedelta(days=2)
 
 
 def _referenced_nodes(evidence, snapshot: dict) -> list[str]:
@@ -277,7 +296,9 @@ def _human_agents(evidence) -> list[dict]:
     return agents
 
 
-def _record_publication(episode: dict, written: dict, observation_count: int) -> None:
+def _record_publication(
+    episode: dict, written: dict, observation_count: int, retracted_count: int
+) -> None:
     with pool.connection() as c, c.cursor() as cur:
         cur.execute(
             "UPDATE episodes SET fhir_risk_assessment_id=%s WHERE episode_id=%s",
@@ -294,6 +315,7 @@ def _record_publication(episode: dict, written: dict, observation_count: int) ->
                 "risk_assessment_id": written["id"],
                 "fhir_version_id": written["version"],
                 "observation_count": observation_count,
+                "retracted_observation_count": retracted_count,
             },
         )
     )

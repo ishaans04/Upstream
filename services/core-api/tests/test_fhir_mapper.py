@@ -261,6 +261,20 @@ def test_retracted_observation_becomes_entered_in_error():
     assert evidence_to_observation(_event(), retracted=True)["status"] == "entered-in-error"
 
 
+def test_a_retracted_observation_claims_the_profile_that_allows_it():
+    """The OneAquaHealth indicator observation pattern-fixes status to #final.
+
+    A withdrawn reading cannot conform to it, and should not: it is no longer an
+    indicator. Claiming the indicator profile anyway would make every retraction
+    fail validation on write, which is how this was found.
+    """
+    retracted = evidence_to_observation(_event(), retracted=True)
+    assert retracted["meta"]["profile"] == [f"{SD}/UpstreamRetractedObservation"]
+
+    kept = evidence_to_observation(_event(), retracted=False)
+    assert kept["meta"]["profile"] == [f"{SD}/UpstreamEvidenceObservation"]
+
+
 def test_observation_carries_both_times(_network):
     """GC-4, with a lab result that arrived two days after the sample."""
     obs = evidence_to_observation(

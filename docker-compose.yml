@@ -87,9 +87,18 @@ services:
       #
       # SPRING_APPLICATION_JSON is bound as structured JSON, so the key keeps
       # its dot, and it outranks the starter's application.yaml.
+      #
+      # defer_indexing_for_codesystems_of_size also lives here. It defaults to
+      # 100: a CodeSystem with more concepts than that has its tail indexed by a
+      # background job, and until that job runs $validate rejects those codes
+      # with "Code is not found in CodeSystem" even though the CodeSystem is
+      # present and HAPI says it is supported. The OneAquaHealth code system has
+      # 185 concepts, and the indicators Upstream publishes for field tests and
+      # nutrients sit past the boundary.
       SPRING_APPLICATION_JSON: >-
         {"spring":{"jpa":{"properties":{"hibernate":
-        {"dialect":"ca.uhn.fhir.jpa.model.dialect.HapiFhirPostgresDialect"}}}}}
+        {"dialect":"ca.uhn.fhir.jpa.model.dialect.HapiFhirPostgresDialect"}}}},
+        "hapi":{"fhir":{"defer_indexing_for_codesystems_of_size":100000}}}
       HAPI_FHIR_FHIR_VERSION: R4
       HAPI_FHIR_VALIDATION_REQUESTS_ENABLED: "true"
       HAPI_FHIR_SUBSCRIPTION_RESTHOOK_ENABLED: "true"
