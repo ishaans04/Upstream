@@ -72,21 +72,34 @@ services:
       SPRING_DATASOURCE_USERNAME: hapi_role
       SPRING_DATASOURCE_PASSWORD: ${HAPI_DB_PASSWORD}
       SPRING_DATASOURCE_DRIVERCLASSNAME: org.postgresql.Driver
-      # HapiFhirPostgres94Dialect no longer exists in HAPI 7.4. Naming a missing
-      # dialect class does not fail loudly - Hibernate falls back to H2 and then
-      # emits CLOB columns against Postgres, so the container dies on DDL.
-      SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: ca.uhn.fhir.jpa.model.dialect.HapiFhirPostgresDialect
+      # The dialect goes through SPRING_APPLICATION_JSON, not
+      # SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT.
+      #
+      # `spring.jpa.properties` is a Map, so everything after it is a map *key*.
+      # Spring's relaxed binding turns the underscores in an environment
+      # variable name into hyphens, so that variable sets the key
+      # `hibernate-dialect`, which Hibernate ignores - and the starter's own
+      # default of HapiFhirH2Dialect stands. Nothing fails loudly: H2Dialect
+      # then tries to parse PostgreSQL's version string, dies on "(Ubuntu",
+      # and HAPI carries on emitting H2 DDL (`clob`, `blob`) and H2 SQL
+      # (`select next value for seq_resource_id`) against Postgres. Every write
+      # fails with HAPI-2223 while the server still answers /metadata with 200.
+      #
+      # SPRING_APPLICATION_JSON is bound as structured JSON, so the key keeps
+      # its dot, and it outranks the starter's application.yaml.
+      SPRING_APPLICATION_JSON: >-
+        {"spring":{"jpa":{"properties":{"hibernate":
+        {"dialect":"ca.uhn.fhir.jpa.model.dialect.HapiFhirPostgresDialect"}}}}}
       HAPI_FHIR_FHIR_VERSION: R4
       HAPI_FHIR_VALIDATION_REQUESTS_ENABLED: "true"
       HAPI_FHIR_SUBSCRIPTION_RESTHOOK_ENABLED: "true"
-      # The OAH IG is not on packages.fhir.org, so HAPI is pointed at the
-      # package Upstream vendors from the IG's source (fhir/scripts/vendor-oah-ig.sh).
-      # An empty version makes the package installer abort at boot.
-      HAPI_FHIR_IMPLEMENTATIONGUIDES_OAH_NAME: hl7.eu.fhir.oah
-      HAPI_FHIR_IMPLEMENTATIONGUIDES_OAH_VERSION: ${OAH_IG_VERSION}
-      HAPI_FHIR_IMPLEMENTATIONGUIDES_OAH_URL: file:///app/fhir-ig/hl7.eu.fhir.oah.tgz
-    volumes:
-      - ./fhir/vendor:/app/fhir-ig:ro
+      # No HAPI_FHIR_IMPLEMENTATIONGUIDES_* here, deliberately. Installing the
+      # IG at boot makes HAPI's startup depend on resolving a package: the OAH
+      # IG is not on any registry, and with only name and version bound HAPI
+      # dies with "HAPI-1301: Unable to locate package" and never serves again.
+      # It would also never load Upstream's own profiles, which is what
+      # $validate actually needs. `make fhir-load` (fhir/scripts/load-into-hapi.sh)
+      # pushes both once HAPI is up, and can be re-run at any time.
     depends_on: { db: { condition: service_healthy } }
     ports: ["8080:8080"]
 

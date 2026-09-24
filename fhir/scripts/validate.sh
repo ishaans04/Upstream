@@ -21,8 +21,20 @@ VALIDATOR=$(scripts/get-validator.sh)
 REPORT=validation-report.json
 rm -f "$REPORT"
 
-# -ig vendor/... loads the OAH profiles our profiles derive from; -ig
-# fsh-generated loads our own, so examples can be checked against them.
+# A wrong -ig path loads zero resources without failing, and the examples then
+# validate against base R4 while appearing to pass. Refuse to run in that state.
+PROFILES=$(ls fsh-generated/resources/StructureDefinition-*.json 2>/dev/null | wc -l)
+[ "$PROFILES" -gt 0 ] || {
+  echo "sushi produced no StructureDefinitions; there is nothing to validate against" >&2
+  exit 1
+}
+
+# The first -ig loads the OAH profiles ours derive from; the second loads our
+# own, so the examples are checked against them and not merely against base R4.
+# It must name the resources directory: pointed at fsh-generated the validator
+# loads nothing, says so in one line, and validates the examples against
+# nothing.
+#
 # The validator exits non-zero when it finds errors. That is the outcome this
 # script exists to report on, so `set -e` must not swallow it before the report
 # is read -- and CI still needs the report uploaded when the gate fails.
@@ -31,7 +43,7 @@ java -jar "$VALIDATOR" \
   fsh-generated/resources/*.json \
   -version 4.0.1 \
   -ig vendor/hl7.eu.fhir.oah.tgz \
-  -ig fsh-generated \
+  -ig fsh-generated/resources \
   ${TX_SERVER_URL:+-tx "$TX_SERVER_URL"} \
   -output "$REPORT"
 VALIDATOR_STATUS=$?

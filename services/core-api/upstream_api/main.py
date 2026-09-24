@@ -13,6 +13,7 @@ from .api.replay import router as replay_router
 from .config import settings
 from .db import close_pool, open_pool
 from .eventlog import store
+from .fhir.cds_hooks import router as cds_hooks_router
 from .ingest.rainfall_job import poll_rainfall
 from .ingest.routes import rainfall as ingest_rainfall
 from .ingest.routes import router as ingest_router
@@ -105,6 +106,9 @@ app.include_router(episodes_router)
 app.include_router(replay_router)
 app.include_router(missions_router)
 app.include_router(network_router)
+# CDS Hooks is mounted at the root, not under a prefix: the specification
+# fixes the discovery path at /cds-services and an EHR will not look elsewhere.
+app.include_router(cds_hooks_router)
 
 
 @app.get("/healthz")

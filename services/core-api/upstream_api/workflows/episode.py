@@ -36,6 +36,7 @@ from upstream_shared.events import EventEnvelope, EventType
 from ..config import settings
 from ..db import pool
 from ..eventlog import store
+from ..fhir.publisher import publish_episode_quietly
 from . import timers
 
 CLOSED = {EpisodeState.RESOLVED, EpisodeState.REFUTED}
@@ -196,6 +197,11 @@ def _transition(ep: dict, target: EpisodeState, *, reason: str, event=None,
         payload={"episode_id": ep["episode_id"], "from": ep["state"],
                  "to": target.value, "reason": reason},
         causation_id=getattr(event, "event_id", None)))
+    # FR-25: the FHIR view follows the state change. Only the caller that
+    # actually moved the episode publishes, so a contended transition produces
+    # one publication, not three. Publishing never raises here - the transition
+    # has already happened and is already on the log (see publish_episode_quietly).
+    publish_episode_quietly(ep["episode_id"])
     return True
 
 

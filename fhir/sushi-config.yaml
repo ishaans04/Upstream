@@ -17,8 +17,12 @@ description: >-
 status: draft
 version: 0.1.0
 fhirVersion: 4.0.1
-copyrightYear: 2026+
-releaseLabel: ci-build
+# copyrightYear, releaseLabel and show-inherited-invariants are deliberately
+# absent. sushi turns each into an ImplementationGuide.definition.parameter,
+# and none of those codes is in R4's required GuideParameterCode value set, so
+# each one is a validator error - seven of them, against GC-3. They matter only
+# to the HL7 IG Publisher, which this build does not run. sushi warns about the
+# first two; that warning is the trade.
 license: CC0-1.0
 jurisdiction: http://unstats.un.org/unsd/methods/m49/m49.htm#150 "Europe"
 publisher:
@@ -26,8 +30,11 @@ publisher:
 dependencies:
   hl7.eu.fhir.oah: 0.1.0-ci-build
   hl7.fhir.uv.subscriptions-backport.r4: 1.1.0
+# At least one parameter must be present: sushi emits `parameter: []` when
+# there are none, and an empty array is itself a validator error. This one is
+# both valid in R4's GuideParameterCode and true of this project.
 parameters:
-  show-inherited-invariants: false
+  path-pages: input/pagecontent
 menu:
   Home: index.html
   Artifacts: artifacts.html
