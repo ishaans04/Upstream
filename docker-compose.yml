@@ -62,6 +62,7 @@ services:
     environment:
       CLINICAL_DATABASE_URL: ${CLINICAL_DATABASE_URL}
       EPISODE_API_BASE_URL: http://api:8000
+      CLINICAL_DAILY_INTERVAL_S: ${CLINICAL_DAILY_INTERVAL_S:-86400}
     depends_on: { db: { condition: service_healthy } }
     ports: ["8100:8100"]
 
