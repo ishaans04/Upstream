@@ -69,3 +69,13 @@ OneAquaHealth indicator (GC-2); Upstream adds instruments, not concepts."
 * $oah-temporary#nitrite "Nitrite"
 * $oah-temporary#nitrate "Nitrate"
 * $oah-temporary#hydrology "Hydrology of the stream"
+
+ValueSet: UpstreamSyndromeVS
+Id: syndrome-vs
+Title: "Upstream Syndrome"
+Description: "Syndromes Upstream counts against. Kept in step with SYNDROME_SET in
+upstream_shared.codes, which is what the services actually read."
+* ^url = "https://upstream-onehealth.example/ValueSet/syndrome-vs"
+* ^status = #draft
+* ^experimental = false
+* include codes from system UpstreamSyndrome

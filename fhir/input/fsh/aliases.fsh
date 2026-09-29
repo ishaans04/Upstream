@@ -29,6 +29,7 @@ Alias: $episode-state = https://upstream-onehealth.example/CodeSystem/episode-st
 Alias: $exposure-pathway = https://upstream-onehealth.example/CodeSystem/exposure-pathway
 Alias: $observation-method = https://upstream-onehealth.example/CodeSystem/observation-method
 Alias: $source-type = https://upstream-onehealth.example/CodeSystem/source-type
+Alias: $syndrome = https://upstream-onehealth.example/CodeSystem/syndrome
 
 // --- OAH terminology -------------------------------------------------------
 Alias: $oah-temporary = http://hl7.eu/fhir/ig/oah/CodeSystem/temporarySystem-oah-eu

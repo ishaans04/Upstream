@@ -86,3 +86,16 @@ an exposure zone population is defined by where people are, not by who they are.
 * ^caseSensitive = true
 * ^content = #complete
 * #zone-presence "Present in an exposure zone" "Resident in, or otherwise present in, the referenced exposure zone during the episode window."
+
+CodeSystem: UpstreamSyndrome
+Id: syndrome
+Title: "Upstream Syndrome"
+Description: "The syndrome definitions Upstream counts against. These are case definitions
+for aggregate surveillance, not diagnoses (GC-12)."
+* ^url = "https://upstream-onehealth.example/CodeSystem/syndrome"
+* ^status = #draft
+* ^experimental = false
+* ^caseSensitive = true
+* ^content = #complete
+* #acute_gastroenteritis "Acute gastroenteritis" "Presentation matching the acute gastrointestinal illness case definition."
+* #fever_after_floodwater_contact "Fever after floodwater contact" "Febrile presentation with reported contact with floodwater."

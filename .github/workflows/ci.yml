@@ -16,6 +16,11 @@ jobs:
           --health-cmd "pg_isready -U upstream" --health-interval 5s --health-retries 20
     env:
       DATABASE_URL: postgresql://upstream:upstream@localhost:5432/upstream
+      # The health zone is a separate database with its own role (GC-7). CI runs
+      # its boundary tests for real rather than skipping them: "no patient
+      # column, no environmental credential, no small count" is a claim this
+      # project makes, so it is checked on every push.
+      CLINICAL_DATABASE_URL: postgresql://clinical_role:clinical@localhost:5432/clinical
       CATCHMENT_ID: coimbra-ribeira
       JAX_PLATFORMS: cpu
       JAX_ENABLE_X64: "1"
@@ -34,9 +39,15 @@ jobs:
         run: |
           psql -h localhost -U upstream -d upstream -v ON_ERROR_STOP=1 \
             -f docker/postgres/init/00-extensions.sql
+          # That file creates the roles with a placeholder password;
+          # docker/postgres/init/01-rotate-passwords.sh does this part at
+          # container start, and there is no container here.
+          psql -h localhost -U upstream -d upstream -v ON_ERROR_STOP=1 \
+            -c "ALTER ROLE clinical_role WITH PASSWORD 'clinical';"
 
       - run: uv run ruff check .
       - run: uv run alembic -c db/alembic.ini upgrade head
+      - run: uv run alembic -c db/alembic_clinical.ini upgrade head
 
       # data/artifacts is git-ignored (the network is rebuildable, GC-6), so a fresh
       # checkout has nothing for the API tests to snap observations against. Compile a

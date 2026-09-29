@@ -289,6 +289,7 @@ published at all; this one is above it (GC-7)."
 * date = "2026-09-23T02:00:00+01:00"
 * period.start = "2026-09-22"
 * period.end = "2026-09-22"
+* group.code = $syndrome#acute_gastroenteritis "Acute gastroenteritis"
 * group.measureScore.value = 7
 * group.measureScore.unit = "presentations"
 * group.measureScore.system = "http://unitsofmeasure.org"

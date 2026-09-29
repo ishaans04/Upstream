@@ -20,5 +20,11 @@ created. No patient-level data ever crosses this boundary (GC-7)."
 * subject only Reference(Group)
 * subject ^short = "The population of an area, never a Patient"
 * period 1..1 MS
+* evaluatedResource 0..0
+* evaluatedResource ^short = "Forbidden: it would point at the records behind the count (GC-7)"
+* group 1..* MS
+* group.code 1..1 MS
+* group.code from UpstreamSyndromeVS (extensible)
+* group.code ^short = "Which syndrome this group counts. Without it the count means nothing, and the health-zone ingest has nothing to file it under."
 * group.measureScore.value 0..1 MS
 * group.measureScore ^short = "Count for the area/day/syndrome; absent when suppressed"
