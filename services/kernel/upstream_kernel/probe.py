@@ -79,7 +79,16 @@ def _hypothesis_exposes_zone(post, net, tables, z: int) -> np.ndarray:
 def probe(post, net, tables, params, zones, *, now: dt.datetime,
           mode: ProbeMode = ProbeMode.PROTECT, max_candidates: int = 5,
           reachable_within_s: float = 1800, flood_warning: bool = False,
-          flow_condition: str = "wet", origin_node: str | None = None) -> list[dict]:
+          flow_condition: str = "wet", origin_node: str | None = None,
+          method: str = "citizen_visual_olfactory") -> list[dict]:
+    """Rank where to look next by EC2 gain per walking second.
+
+    `method` is what the volunteer will do there. EC2 scores a candidate by how its
+    possible outcomes split the hypotheses, so it must predict those outcomes with
+    the detection curve of the test actually taken: scored as a sniff, a test strip
+    looks far less informative than it is. The default is the least sensitive
+    method a mission may use, which never overstates a candidate.
+    """
     ok, _reason = mission_allowed(now=now, flow_condition=flow_condition,
                                   flood_warning=flood_warning, node_attrs={})
     if not ok:
@@ -94,7 +103,7 @@ def probe(post, net, tables, params, zones, *, now: dt.datetime,
     costs: dict[str, float] = {}
     meta: dict[str, dict] = {}
     origin = net.node_index[origin_node] if origin_node else None
-    curve = params.detection["citizen_visual_olfactory"]
+    curve = params.detection[method]
 
     for node_idx in range(len(net.node_ids)):
         tau = tables.tau[post.flow_idx, k, node_idx]
@@ -112,7 +121,7 @@ def probe(post, net, tables, params, zones, *, now: dt.datetime,
             continue
         t_mid = 0.5 * (w_lo + w_hi)
         obs = Observation(event_id="cand", node_idx=node_idx, t_obs=t_mid,
-                          method="citizen_visual_olfactory", result="positive", value=None,
+                          method=method, result="positive", value=None,
                           observer_reliability=params.observer_reliability_default,
                           window_start=None, window_end=None)
         c = _predicted_concentration(obs, post.grid, tables, post.flow_idx, params)

@@ -187,3 +187,14 @@ def test_a_quiet_area_asks_for_nothing(clinical_conn, clinical_counts, core_api)
     scan_clusters(today=TODAY)
     assert [r for r in core_api.posted("/clinical/upstream-search")
             if r["area_code"] == AREA] == []
+
+
+# --- GC-10 -------------------------------------------------------------------
+
+
+def test_simulated_counts_never_reach_a_live_test(outbreak, clinical_conn):
+    """The simulator files counts for the same areas; the stream keeps them apart."""
+    with clinical_conn.cursor() as cur:
+        cur.execute("UPDATE syndromic_counts SET stream='sim' WHERE area_code=%s", (AREA,))
+    assert run_daily(today=TODAY, stream="live")["published"] == 0
+    assert run_daily(today=TODAY, stream="sim")["published"] == 1

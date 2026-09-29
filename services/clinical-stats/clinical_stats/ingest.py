@@ -14,6 +14,7 @@ system that needs to know its feed was refused.
 from __future__ import annotations
 
 import datetime as dt
+from typing import Literal
 
 from fastapi import APIRouter, HTTPException
 
@@ -27,11 +28,11 @@ SUPPRESSION_THRESHOLD = 5
 
 
 @router.post("/counts")
-def post_counts(measure_report: dict) -> dict:
-    return ingest_measure_report(measure_report)
+def post_counts(measure_report: dict, stream: Literal["live", "sim"] = "live") -> dict:
+    return ingest_measure_report(measure_report, stream=stream)
 
 
-def ingest_measure_report(mr: dict) -> dict:
+def ingest_measure_report(mr: dict, *, stream: str = "live") -> dict:
     """Store the acceptable counts in a report. Returns what happened to each."""
     _reject_anything_patient_level(mr)
 
@@ -47,7 +48,7 @@ def ingest_measure_report(mr: dict) -> dict:
         if value is None or value < SUPPRESSION_THRESHOLD:
             suppressed += 1
             continue
-        _store(day, area, syndrome, int(value))
+        _store(day, area, syndrome, int(value), stream)
         accepted += 1
 
     return {"accepted": accepted, "suppressed": suppressed}
@@ -98,14 +99,14 @@ def _syndrome(group: dict) -> str:
     raise HTTPException(400, "each group must name the syndrome it counts")
 
 
-def _store(day: dt.date, area: str, syndrome: str, count: int) -> None:
+def _store(day: dt.date, area: str, syndrome: str, count: int, stream: str) -> None:
     # A corrected feed for a day it already sent replaces that day, rather than
     # adding a second row that would double it.
     with conn() as c, c.cursor() as cur:
         cur.execute(
-            "INSERT INTO syndromic_counts (day, area_code, syndrome, count, source) "
-            "VALUES (%s, %s, %s, %s, %s) "
-            "ON CONFLICT (day, area_code, syndrome) "
+            "INSERT INTO syndromic_counts (stream, day, area_code, syndrome, count, source) "
+            "VALUES (%s, %s, %s, %s, %s, %s) "
+            "ON CONFLICT (stream, day, area_code, syndrome) "
             "DO UPDATE SET count = EXCLUDED.count, received_at = now()",
-            (day, area, syndrome, count, "measure-report"),
+            (stream, day, area, syndrome, count, "measure-report"),
         )

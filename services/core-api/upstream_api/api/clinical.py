@@ -20,11 +20,11 @@ from typing import Literal
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 from upstream_shared.events import EventEnvelope, EventType
+from upstream_shared.ids import zone_group_id
 
 from ..config import settings
 from ..db import pool
 from ..eventlog import store
-from ..fhir.mapper import zone_group_id
 from ..network import get_network
 
 router = APIRouter(prefix="/clinical", tags=["clinical"])

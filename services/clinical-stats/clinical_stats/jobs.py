@@ -47,19 +47,20 @@ def run_daily(*, stream: str = "live", today: dt.date | None = None) -> dict:
     for episode in episode_client.active_episodes(stream):
         for zone in episode["zones"].values():
             for syndrome in _syndromes_for(zone):
-                result = test_episode_zone(episode, zone, syndrome, today=today)
+                result = test_episode_zone(episode, zone, syndrome, today=today,
+                                           stream=stream)
                 if result is None:
                     skipped += 1
                     continue
-                result_id = _store(result)
+                result_id = _store(result, stream)
                 episode_client.post_test_result(result, stream)
                 _mark_published(result_id)
                 published += 1
     return {"published": published, "skipped": skipped}
 
 
-def test_episode_zone(episode: dict, zone: dict, syndrome: str, *,
-                      today: dt.date) -> TestResult | None:
+def test_episode_zone(episode: dict, zone: dict, syndrome: str, *, today: dt.date,
+                      stream: str = "live") -> TestResult | None:
     """The matched-filter test for one episode, zone and syndrome, or None if untestable."""
     first = _utc_day(min(zone["t_grid"]))
     end = episode.get("clinical_window_end")
@@ -67,10 +68,10 @@ def test_episode_zone(episode: dict, zone: dict, syndrome: str, *,
     if last < first:
         return None
     area = zone["area_code"]
-    days, counts = _counts(area, syndrome, first, last)
+    days, counts = _counts(area, syndrome, first, last, stream)
     if np.all(np.isnan(counts)):
         return None                     # nothing reported for this area in the window
-    baseline = baseline_for(area, syndrome, before=first)
+    baseline = baseline_for(area, syndrome, before=first, stream=stream)
     if baseline is None:
         return None
     exposure = {"t_grid": zone["t_grid"], "p_exposed": zone["p_exposed"],
@@ -89,15 +90,16 @@ def scan_clusters(*, stream: str = "live", today: dt.date | None = None) -> dict
                  for z in ep["zones"].values()}
     with conn() as c, c.cursor() as cur:
         cur.execute("SELECT DISTINCT area_code, syndrome FROM syndromic_counts "
-                    "WHERE day BETWEEN %s AND %s ORDER BY 1, 2", (first, today))
+                    "WHERE stream=%s AND day BETWEEN %s AND %s ORDER BY 1, 2",
+                    (stream, first, today))
         series = cur.fetchall()
 
     found = []
     for area, syndrome in series:
-        baseline = baseline_for(area, syndrome, before=first)
+        baseline = baseline_for(area, syndrome, before=first, stream=stream)
         if baseline is None:
             continue
-        days, counts = _counts(area, syndrome, first, today)
+        days, counts = _counts(area, syndrome, first, today, stream)
         cluster = blind_scan(counts, baseline, days=days, area_code=area, syndrome=syndrome)
         # Bonferroni over every series scanned: the service looked in all of them.
         p_adjusted = min(1.0, cluster.p_value * len(series))
@@ -112,24 +114,27 @@ def scan_clusters(*, stream: str = "live", today: dt.date | None = None) -> dict
     return {"scanned": len(series), "requested": len(found)}
 
 
-def baseline_for(area: str, syndrome: str, *, before: dt.date) -> Baseline | None:
+def baseline_for(area: str, syndrome: str, *, before: dt.date,
+                 stream: str = "live") -> Baseline | None:
     """Fit on the history before `before`, store it, return it. None if too little history.
 
     The history stops the day before the window being tested. A baseline fitted on
     the window would learn the excess as normal and hide it.
     """
     start = before - dt.timedelta(days=BASELINE_HISTORY_DAYS)
-    days, counts = _counts(area, syndrome, start, before - dt.timedelta(days=1))
+    days, counts = _counts(area, syndrome, start, before - dt.timedelta(days=1), stream)
     if np.count_nonzero(~np.isnan(counts)) < MIN_OBSERVED_DAYS:
         return None
     baseline = fit_baseline(days, counts, area_code=area, syndrome=syndrome)
     with conn() as c, c.cursor() as cur:
         cur.execute(
-            "INSERT INTO baselines (area_code, syndrome, fitted_at, alpha, coefficients, n_obs) "
-            "VALUES (%s, %s, now(), %s, %s, %s) ON CONFLICT (area_code, syndrome) DO UPDATE "
+            "INSERT INTO baselines (stream, area_code, syndrome, fitted_at, alpha, "
+            "coefficients, n_obs) VALUES (%s, %s, %s, now(), %s, %s, %s) "
+            "ON CONFLICT (stream, area_code, syndrome) DO UPDATE "
             "SET fitted_at = now(), alpha = EXCLUDED.alpha, "
             "coefficients = EXCLUDED.coefficients, n_obs = EXCLUDED.n_obs",
-            (area, syndrome, baseline.alpha, Jsonb(baseline.to_row()), baseline.n_obs))
+            (stream, area, syndrome, baseline.alpha, Jsonb(baseline.to_row()),
+             baseline.n_obs))
     return baseline
 
 
@@ -139,26 +144,27 @@ def _syndromes_for(zone: dict) -> list[str]:
             and (s not in SYNDROME_NEEDS_PATHWAY or SYNDROME_NEEDS_PATHWAY[s] in pathways)]
 
 
-def _counts(area: str, syndrome: str, first: dt.date, last: dt.date):
+def _counts(area: str, syndrome: str, first: dt.date, last: dt.date, stream: str):
     """Every day from first to last, with NaN where no count was stored."""
     days = np.arange(first.toordinal(), last.toordinal() + 1, dtype=np.int64)
     counts = np.full(len(days), np.nan)
     with conn() as c, c.cursor() as cur:
-        cur.execute("SELECT day, count FROM syndromic_counts WHERE area_code=%s "
-                    "AND syndrome=%s AND day BETWEEN %s AND %s", (area, syndrome, first, last))
+        cur.execute("SELECT day, count FROM syndromic_counts WHERE stream=%s AND area_code=%s "
+                    "AND syndrome=%s AND day BETWEEN %s AND %s",
+                    (stream, area, syndrome, first, last))
         for day, count in cur.fetchall():
             counts[day.toordinal() - first.toordinal()] = count
     return days, counts
 
 
-def _store(r: TestResult) -> int:
+def _store(r: TestResult, stream: str) -> int:
     with conn() as c, c.cursor() as cur:
         cur.execute(
-            "INSERT INTO test_results (episode_id, area_code, syndrome, method, p_value, "
-            "effect_size, n_days, computed_at) VALUES (%s,%s,%s,%s,%s,%s,%s,%s) "
+            "INSERT INTO test_results (stream, episode_id, area_code, syndrome, method, "
+            "p_value, effect_size, n_days, computed_at) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s) "
             "RETURNING result_id",
-            (r.episode_id, r.area_code, r.syndrome, r.method, r.p_value, r.effect_size,
-             r.n_days, r.computed_at))
+            (stream, r.episode_id, r.area_code, r.syndrome, r.method, r.p_value,
+             r.effect_size, r.n_days, r.computed_at))
         return cur.fetchone()[0]
 
 
