@@ -51,7 +51,10 @@ jobs:
       - run: uv run alembic -c db/alembic.ini upgrade head
       # Migration 0001 creates kernel_role without a login; the container's
       # 01-rotate-passwords.sh gives it one, and there is no container here.
-      - run: >
+      - name: Give kernel_role a login
+        env:
+          PGPASSWORD: upstream
+        run: >
           psql -h localhost -U upstream -d upstream -v ON_ERROR_STOP=1
           -c "ALTER ROLE kernel_role WITH LOGIN PASSWORD 'kernel';"
           -c "GRANT CONNECT ON DATABASE upstream TO kernel_role;"
