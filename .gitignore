@@ -11,7 +11,12 @@ fhir/output/
 fhir/input-cache/
 .pytest_cache/
 .ruff_cache/
-bench/results/
+# Raw benchmark output is rebuilt by every run; the summaries and charts are the record.
+bench/results/*
+!bench/results/summary.json
+!bench/results/summary-ci.json
+!bench/results/*.png
+bench/ci-results/
 *.parquet
 
 # Agent working context — local only, never committed

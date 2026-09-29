@@ -171,6 +171,7 @@ name = "bench"
 version = "0.1.0"
 source = { editable = "services/bench" }
 dependencies = [
+    { name = "clinical-stats" },
     { name = "duckdb" },
     { name = "kernel" },
     { name = "matplotlib" },
@@ -190,6 +191,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "clinical-stats", editable = "services/clinical-stats" },
     { name = "duckdb", specifier = "==1.1.*" },
     { name = "kernel", editable = "services/kernel" },
     { name = "matplotlib", specifier = "==3.9.*" },
