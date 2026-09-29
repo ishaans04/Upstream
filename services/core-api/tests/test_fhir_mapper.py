@@ -9,7 +9,6 @@ see.
 import base64
 import datetime as dt
 import json
-import os
 import uuid
 
 import pytest
@@ -439,16 +438,14 @@ def test_every_resource_declares_the_profile_it_claims_to_meet(snap, _network):
 
 
 @pytest.mark.integration
-def test_every_generated_resource_passes_the_hl7_validator(snap, _network):
+def test_every_generated_resource_passes_the_hl7_validator(snap, _network, hapi_client):
     """GC-3 / FR-26: validation on write, not only in CI.
 
     CI checks the profiles and the hand-written examples. This checks what the
     mapper actually produces, against the server that will store it -- the two
     can diverge, and only this test notices when they do.
     """
-    from upstream_api.fhir.client import FhirClient
-
-    client = FhirClient(os.environ.get("HAPI_BASE_URL", "http://localhost:8080/fhir"))
+    client = hapi_client
     resources = [
         episode_to_riskassessment(_episode(), snap, _network),
         evidence_to_observation(_event(), retracted=False),
@@ -474,7 +471,7 @@ def test_every_generated_resource_passes_the_hl7_validator(snap, _network):
 
 
 @pytest.mark.integration
-def test_the_validator_would_reject_a_resource_that_broke_the_profile():
+def test_the_validator_would_reject_a_resource_that_broke_the_profile(hapi_client):
     """Proves the test above is not passing vacuously.
 
     `$validate` answers with an empty OperationOutcome both when a resource is
@@ -482,10 +479,9 @@ def test_the_validator_would_reject_a_resource_that_broke_the_profile():
     profiles were never loaded into HAPI, every resource would "pass" and
     validation on write would be checking nothing at all.
     """
-    from upstream_api.fhir.client import FhirClient
     from upstream_api.fhir.mapper import SD
 
-    client = FhirClient(os.environ.get("HAPI_BASE_URL", "http://localhost:8080/fhir"))
+    client = hapi_client
     stripped = {
         "resourceType": "RiskAssessment",
         "id": "not-an-episode",

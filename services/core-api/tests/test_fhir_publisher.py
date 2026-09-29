@@ -27,23 +27,13 @@ HAPI = os.environ.get("HAPI_BASE_URL", "http://localhost:8080/fhir")
 
 
 @pytest.fixture(scope="module")
-def hapi_module():
-    import httpx
-
-    try:
-        response = httpx.get(f"{HAPI}/metadata", timeout=10.0)
-        response.raise_for_status()
-    except Exception as exc:  # pragma: no cover - environment, not behaviour
-        pytest.skip(f"HAPI is not available at {HAPI}: {exc}")
-
-    from upstream_api.fhir import client as client_module
-
-    return client_module.FhirClient(HAPI)
+def hapi_module(hapi_client):
+    return hapi_client
 
 
 @pytest.fixture
-def hapi(hapi_module):
-    return hapi_module
+def hapi(hapi_client):
+    return hapi_client
 
 
 @pytest.fixture(scope="module")

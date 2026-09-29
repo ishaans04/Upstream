@@ -417,3 +417,28 @@ def seed_snapshot(db_conn, _network):
 
     yield _seed
     _purge_test_snapshots(db_conn)
+
+
+HAPI_BASE_URL = os.environ.get("HAPI_BASE_URL", "http://localhost:8080/fhir")
+
+
+@pytest.fixture(scope="session")
+def hapi_client():
+    """A FhirClient against a reachable HAPI, or a skip.
+
+    Validation on write is the half of GC-3 that CI cannot check: CI validates
+    the profiles and examples with the HL7 validator, which needs no server, but
+    it runs no HAPI. These tests skip there and run locally against
+    `make fhir-load`. A skip is reported; a connection error would be reported as
+    a failure of Upstream rather than an absence of a server.
+    """
+    import httpx
+
+    try:
+        httpx.get(f"{HAPI_BASE_URL}/metadata", timeout=10.0).raise_for_status()
+    except Exception as exc:  # pragma: no cover - environment, not behaviour
+        pytest.skip(f"no HAPI at {HAPI_BASE_URL}: {exc}")
+
+    from upstream_api.fhir.client import FhirClient
+
+    return FhirClient(HAPI_BASE_URL)
