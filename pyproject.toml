@@ -20,6 +20,8 @@ upstream-shared = { workspace = true }
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+# One-off scripts that rebuilt the approved UI mockup; not shipped code.
+extend-exclude = ["docs/design/mockup"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]

@@ -75,9 +75,14 @@ a single outflow per node, because the travel-time model walks one downstream pa
 root of elapsed travel time, exactly: `sigma = dispersion_coeff * sqrt(tau)`. Phase 9
 recalibrates `dispersion_coeff` against the 80%-window coverage target.
 
-**Every outfall in the pilot catchment is synthetic.** The water utility has not published
-CSO or storm-outfall locations for the Ribeira de Coselhas, so they are invented at
-plausible positions and carry `is_synthetic: true`. The console labels them (PRD R2).
+**The catchment is the Barapullah drain system in South Delhi** (`delhi-barapullah`): the
+Kushak Nallah and Barapulla Nala from the colony drains of R K Puram, Green Park and Chirag
+Delhi to the Yamuna at Sarai Kale Khan, compiled from OpenStreetMap. The earlier Coimbra
+catchment is kept in `data/catchment/coimbra-ribeira/`.
+
+**Every outfall in the catchment is synthetic.** No public register of sewer overflows,
+misconnections or storm outfalls exists for these drains, so they are invented at plausible
+positions and carry `is_synthetic: true`. The console labels them (PRD R2).
 
 ## Safety
 

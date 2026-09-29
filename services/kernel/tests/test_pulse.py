@@ -122,3 +122,35 @@ def test_exposure_probability_never_exceeds_p_event(strong):
     post, net, params, tables, _ = strong
     for z in pulse(post, net, tables, params).values():
         assert z["p_peak"] <= post.p_event + 1e-9
+
+
+def test_the_per_node_shortcut_gives_the_same_curves_as_every_hypothesis_everywhere():
+    """PULSE computes each stream node once, over only the hypotheses that can reach it.
+
+    That is an optimisation, so it must change nothing: the curve for every zone equals
+    evaluating every hypothesis at that zone, the way PULSE did before (NFR-1 on a
+    network with dozens of zones is what forced the shortcut).
+    """
+    import jax.numpy as jnp
+    from upstream_kernel.model.hypotheses import KIND_DIFFUSE, KIND_NONE
+    from upstream_kernel.physics.transport import concentration
+    from upstream_kernel.pulse import DIFFUSE_ZONE_C, EXPOSURE_THRESHOLD_C
+
+    post, net, params, tables, grid = _strong_o14()
+    zones = pulse(post, net, tables, params)
+    p = np.exp(post.log_p)
+    k = np.clip(grid.entry_k, 0, None)
+    f = post.flow_idx
+    for z, zone_id in enumerate(net.zone_ids):
+        node = int(net.zone_node_idx[z])
+        t = np.asarray(zones[zone_id]["t_grid"])
+        c = np.asarray(concentration(
+            jnp.asarray(tables.tau[f, k, node]), jnp.asarray(tables.sigma[f, k, node]),
+            jnp.asarray(tables.dilution[f, k, node]), jnp.asarray(tables.reachable[f, k, node]),
+            t0=jnp.asarray(np.nan_to_num(grid.t0)), duration_s=jnp.asarray(grid.duration_s),
+            mass=jnp.asarray(grid.mass), t_obs=jnp.asarray(t).reshape(-1, 1),
+            decay_per_s=params.decay_per_hour["fecal_indicator"] / 3600.0))
+        c = np.where(grid.kind == KIND_DIFFUSE, DIFFUSE_ZONE_C, c)
+        c = np.where(grid.kind == KIND_NONE, 0.0, c)
+        brute = (c > EXPOSURE_THRESHOLD_C) @ p
+        assert np.allclose(zones[zone_id]["p_exposed"], brute, atol=1e-12)

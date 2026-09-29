@@ -1,0 +1,26 @@
+{
+  "type": "FeatureCollection",
+  "name": "coimbra-ribeira",
+  "crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "catchment_id": "coimbra-ribeira",
+        "name": "Ribeira de Coselhas catchment, Coimbra",
+        "country": "PT",
+        "note": "Corridor around the Ribeira de Coselhas urban stream and its tributaries, from the eastern headwaters down to the confluence with the Rio Mondego. The southern edge is held above the Mondego itself so the main river does not dominate the network."
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-8.4420, 40.2160],
+          [-8.3950, 40.2160],
+          [-8.3950, 40.2400],
+          [-8.4420, 40.2400],
+          [-8.4420, 40.2160]
+        ]]
+      }
+    }
+  ]
+}

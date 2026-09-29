@@ -23,7 +23,7 @@ jobs:
       CLINICAL_DATABASE_URL: postgresql://clinical_role:clinical@localhost:5432/clinical
       # GC-10 is tested from the kernel's own credential; without it those tests skip.
       KERNEL_DATABASE_URL: postgresql://kernel_role:kernel@localhost:5432/upstream
-      CATCHMENT_ID: coimbra-ribeira
+      CATCHMENT_ID: delhi-barapullah
       JAX_PLATFORMS: cpu
       JAX_ENABLE_X64: "1"
     steps:

@@ -13,9 +13,9 @@ from __future__ import annotations
 import numpy as np
 
 
-def _states(results, n_obs: int | None):
+def _states(results, n_obs: int | None, key: str = "states"):
     for r in results:
-        for s in r.get("states") or []:
+        for s in r.get(key) or []:
             if n_obs is None or s["n_obs"] == n_obs:
                 yield s
 
@@ -51,10 +51,15 @@ def window_coverage(results) -> float:
     return float(np.mean(fractions)) if fractions else float("nan")
 
 
-def calibration_error(results, bins: int = 10) -> float:
-    """Expected calibration error of the stated top-source probability."""
-    p = np.array([s["stated_probability"] for s in _states(results, None)], dtype=float)
-    y = np.array([s["was_correct"] for s in _states(results, None)], dtype=float)
+def calibration_error(results, bins: int = 10, *, key: str = "states") -> float:
+    """Expected calibration error of the stated top-source probability.
+
+    `key` names the states to score. They must have been chosen from observed data
+    alone: states chosen because the hidden truth made them easy (a report known to be
+    genuine) make any honest model look underconfident.
+    """
+    p = np.array([s["stated_probability"] for s in _states(results, None, key)], dtype=float)
+    y = np.array([s["was_correct"] for s in _states(results, None, key)], dtype=float)
     if len(p) == 0:
         return float("nan")
     idx = np.clip((p * bins).astype(int), 0, bins - 1)
@@ -66,10 +71,10 @@ def calibration_error(results, bins: int = 10) -> float:
     return float(ece)
 
 
-def reliability_curve(results, bins: int = 10):
+def reliability_curve(results, bins: int = 10, *, key: str = "states"):
     """(mean stated, observed frequency, count) per bin, for the reliability diagram."""
-    p = np.array([s["stated_probability"] for s in _states(results, None)], dtype=float)
-    y = np.array([s["was_correct"] for s in _states(results, None)], dtype=float)
+    p = np.array([s["stated_probability"] for s in _states(results, None, key)], dtype=float)
+    y = np.array([s["was_correct"] for s in _states(results, None, key)], dtype=float)
     idx = np.clip((p * bins).astype(int), 0, bins - 1)
     out = []
     for b in range(bins):

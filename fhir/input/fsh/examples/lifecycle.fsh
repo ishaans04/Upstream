@@ -6,7 +6,7 @@
 // of the published episode, its provenance, the audit record of a CDS card,
 // and the aggregate syndromic count that crossed the health boundary.
 //
-// Every identifier here is synthetic. The catchment is coimbra-ribeira and its
+// Every identifier here is synthetic. The catchment is delhi-barapullah and its
 // outfalls are synthetic by construction (PRD R2).
 
 Instance: upstream-programme
@@ -14,22 +14,22 @@ InstanceOf: Organization
 Usage: #example
 Title: "Upstream catchment programme"
 Description: "The programme that operates the sensors and receives citizen reports."
-* name = "Upstream - Ribeira de Coselhas catchment programme"
+* name = "Upstream - Barapullah drain catchment programme"
 * active = true
 
-Instance: upstream-lab-coimbra
+Instance: upstream-lab
 InstanceOf: Organization
 Usage: #example
 Title: "Municipal water laboratory"
 Description: "The laboratory that returned the E. coli count."
-* name = "Coimbra municipal water laboratory"
+* name = "Municipal water-quality laboratory (synthetic)"
 * active = true
 
 Instance: upstream-outfall-O14
 InstanceOf: UpstreamExposureZone
 Usage: #example
 Title: "Outfall O14"
-Description: "A synthetic storm outfall on the Ribeira de Coselhas (PRD R2)."
+Description: "A synthetic storm outfall on the Kushak Nallah (PRD R2)."
 * identifier.system = "https://upstream-onehealth.example/network/node"
 * identifier.value = "O14"
 * name = "Outfall O14"
@@ -60,8 +60,8 @@ Title: "Exposure zone A"
 Description: "The reach between junction J9 and the municipal park footbridge."
 * identifier.system = "https://upstream-onehealth.example/zone"
 * identifier.value = "ZONE_A"
-* name = "Exposure zone A - Coselhas park reach"
-* description = "Ribeira de Coselhas between junction J9 and the park footbridge."
+* name = "Exposure zone A - nallah-side park reach"
+* description = "The Kushak Nallah between junction J9 and the park footbridge."
 * mode = #instance
 * status = #active
 * type = $location-physical-type#area "Area"
@@ -134,7 +134,7 @@ event time and the record time differ by two days, which is why both are mandato
 * effectiveDateTime = "2026-09-20T09:10:00+01:00"
 * issued = "2026-09-22T14:05:00+01:00"
 * method = $observation-method#lab_ecoli "Laboratory E. coli count"
-* performer = Reference(upstream-lab-coimbra)
+* performer = Reference(upstream-lab)
 * valueQuantity.value = 1840
 * valueQuantity.unit = "colony forming units per 100 millilitre"
 * valueQuantity.system = "http://unitsofmeasure.org"
@@ -253,7 +253,7 @@ a card was shown, not who the patient was."
 * recorded = "2026-09-22T16:30:11+01:00"
 * outcome = #0
 * agent.type.text = "CDS Hooks client"
-* agent.who.display = "Coimbra primary care EHR"
+* agent.who.display = "Primary care EHR (synthetic)"
 * agent.requestor = true
 * source.observer.display = "upstream-onehealth cds-hooks service"
 * entity.what = Reference(upstream-episode-2841-v3)

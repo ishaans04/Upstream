@@ -180,6 +180,7 @@ def run_one(i: int, *, seed: int, kernel: Kernel, with_latency: bool = True) -> 
                                   and r["true_concentration"] <= EXPOSURE_THRESHOLD_C
                                   for r in reports)}
 
+    row["calib_states"] = _calibration_states(kernel, reports, scenario, ctx)
     trigger = next((j for j, r in enumerate(reports) if r["result"] == "positive"
                     and r["true_concentration"] > EXPOSURE_THRESHOLD_C), None)
     if trigger is None:
@@ -221,6 +222,32 @@ def run_one(i: int, *, seed: int, kernel: Kernel, with_latency: bool = True) -> 
                                    if w["window_lo"] is not None and z not in arrivals)
         row.update(_clinical(kernel, arrivals, zones, seed))
     return row
+
+
+def _calibration_states(kernel: Kernel, reports: list[dict], scenario, ctx: dict) -> list[dict]:
+    """States for calibration, chosen from what the system could see and nothing else.
+
+    The G1 trigger is the first report made where the plume truly was -- a fair
+    operational question, but a choice made with the hidden truth. Scoring calibration
+    on those states would ask the kernel to be as confident as someone who knows the
+    report was genuine. Here the trigger is the first positive report of any kind, as
+    the live system would see it, so the stated probabilities refer to the same
+    population they are scored on.
+    """
+    first = next((j for j, r in enumerate(reports) if r["result"] == "positive"), None)
+    if first is None:
+        return []
+    out = []
+    for n in N_OBS:
+        if first + n > len(reports):
+            break
+        known = reports[: first + n]
+        post, _, _ = kernel.posterior([_event(r) for r in known],
+                                      now=known[-1]["observed_at"], **ctx)
+        ranked, stated = kernel.ranked(post)
+        out.append({"n_obs": n, "stated_probability": float(stated),
+                    "was_correct": ranked[0] == scenario.entry_node})
+    return out
 
 
 def _time_recompute(kernel: Kernel, known: list[dict], now: dt.datetime, ctx: dict) -> float:
@@ -404,8 +431,9 @@ def summarise(rows: list[dict], nulls: list[dict]) -> dict:
         "active_mean_samples_charged": active_charged,
         "active_localised_rate": active_success,
         "active_sample_reduction_vs_best_baseline": active_reduction,
-        "calibration_error": metrics.calibration_error(detected),
-        "reliability": metrics.reliability_curve(detected),
+        "calibration_error": metrics.calibration_error(rows, key="calib_states"),
+        "reliability": metrics.reliability_curve(rows, key="calib_states"),
+        "calibration_states": sum(len(r.get("calib_states") or []) for r in rows),
         "g5_scenarios": len(g5),
         "g5_outbreak_cases_mean": G5_OUTBREAK_CASES,
         "delay_matched_days": metrics.detection_delay(g5, "delay_matched"),

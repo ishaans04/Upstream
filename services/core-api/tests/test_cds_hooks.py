@@ -296,16 +296,16 @@ def test_coarse_area_prefers_district_and_never_reads_a_street():
             "patient": {
                 "address": [
                     {
-                        "line": ["14 Rua das Flores"],
-                        "district": "Coselhas",
-                        "postalCode": "3000-123",
+                        "line": ["14, Lodhi Road Flats"],
+                        "district": "Jangpura",
+                        "postalCode": "110014",
                     }
                 ]
             }
         }
     }
-    assert cds_hooks.coarse_area(body) == "Coselhas"
-    assert "Flores" not in str(cds_hooks.coarse_area(body))
+    assert cds_hooks.coarse_area(body) == "Jangpura"
+    assert "Lodhi Road" not in str(cds_hooks.coarse_area(body))
 
 
 def test_encounter_time_defaults_to_now_when_the_ehr_sends_none():

@@ -104,7 +104,9 @@ def test_citizen_reports_are_biased_towards_paths_and_parks(net, many_runs):
     reports = [r for run in many_runs for r in run["reports"]]
     near_share = np.mean([near[net.node_index[r["node_id"]]] for r in reports])
     assert near_share > 0.5
-    assert near_share > 2 * near.mean()          # far above where nodes happen to be
+    # Far above where nodes happen to lie. Put as a share of the room left, because in a
+    # dense city most of the drain is already beside a park (70% on the Barapullah).
+    assert near_share - near.mean() > 0.5 * (1 - near.mean())
 
 
 def test_simulator_generates_negative_reports_too(many_runs):
@@ -125,12 +127,18 @@ def test_detection_follows_the_configured_detection_curve(many_runs):
 
 
 def test_positive_rate_near_the_source_exceeds_far_downstream(net, many_runs):
+    """While the plume is passing, it is stronger near the source than far downstream.
+
+    Only reports made while it is passing count. At a random moment a far node is
+    *more* likely to be caught in the plume, which has spread out and takes longer to
+    go by -- that is dispersion, not detection, and not what this checks.
+    """
     near, far = [], []
     for run in many_runs:
         plume = run["plume"]
         for r in run["reports"]:
             tau = plume.arrival_s[net.node_index[r["node_id"]]]
-            if not np.isfinite(tau):
+            if not np.isfinite(tau) or r["true_concentration"] < 0.01:
                 continue
             (near if tau < 1800 else far).append(r["result"] == "positive")
     assert np.mean(near) > np.mean(far)

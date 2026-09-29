@@ -29,3 +29,6 @@ changelog.md
 fhir/.validator/
 fhir/validation-report.json
 fhir/output/
+
+# Browser-automation screenshots and logs from local UI checks
+.playwright-mcp/

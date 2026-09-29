@@ -189,7 +189,7 @@ def test_the_gate_blocks_a_latency_regression():
 # --- Baselines, on the real network ---------------------------------------------
 
 
-# The committed Coimbra network, not whatever data/artifacts holds: CI compiles a
+# The committed catchment network, not whatever data/artifacts holds: CI compiles a
 # synthetic line there, and these tests are about the real catchment.
 REAL_NETWORK = os.environ.get("SIM_TEST_NETWORK", "bench/fixtures/network.npz")
 

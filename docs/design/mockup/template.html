@@ -1,0 +1,1488 @@
+<meta charset="utf-8">
+<title>Upstream</title>
+<meta name="description" content="Upstream: contamination tracing for the Barapullah drain system, South Delhi.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Schibsted+Grotesk:wght@400;500;600;700&display=swap">
+<style>
+:root {
+  color-scheme: dark;
+  /* Smoky black ground, olive drab surfaces. Text tones are lifted so they stay
+     WCAG AA on the night-water ground, where boxes are outline only. */
+  --bg: #0f1012;
+  --bg-2: #0c0d0f;
+  --surface: #151619;                           /* cards */
+  --surface-2: #1b1c20;                         /* hover, inner panels */
+  --surface-3: #26272b;                         /* tracks */
+  --line: rgba(255, 255, 255, 0.08);
+  --line-soft: rgba(255, 255, 255, 0.06);
+  --line-hover: rgba(255, 255, 255, 0.16);
+  --line-key: rgba(242, 163, 58, 0.55);
+  --btn-line: rgba(255, 255, 255, 0.14);
+  --btn-line-hover: rgba(255, 255, 255, 0.28);
+  --chip-line: rgba(255, 255, 255, 0.28);
+  --overlay: rgba(12, 13, 15, 0.9);
+  --fill: #f2a33a;
+  --text: #f3f2ee;
+  --muted: #c3c3bf;
+  --faint: #9a9ca0;
+  --ochre: #f2a33a;                             /* amber accent */
+  --ochre-2: #f7bd6a;
+  --ochre-soft: rgba(242, 163, 58, 0.12);
+  --rust: #e5533d;                              /* contamination seen, most likely source */
+  --rust-soft: rgba(229, 83, 61, 0.16);
+  --sage: #7fa37a;                              /* checked, looked normal; evidence */
+  --sage-text: #a9c6a2;
+  --sage-soft: rgba(127, 163, 122, 0.14);
+  --slate: #7d8a93;                             /* zones */
+  --live: #6fbf73;                              /* the header's status dot */
+  --water: #4f8fb5;                             /* drains */
+  --water-dim: #2d4a5c;
+  --sans: "Schibsted Grotesk", "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --r: 10px;
+  --r-sm: 6px;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0; color: var(--text);
+  background: var(--bg);
+  font: 400 14px/1.5 var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+a { color: inherit; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--ochre-2); outline-offset: 2px; border-radius: 4px; }
+.mono { font-family: var(--mono); }
+.num { font-variant-numeric: tabular-nums; }
+.eyebrow {
+  font: 500 11px/1.2 var(--mono); letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--faint);
+}
+h1, h2, h3 { text-wrap: balance; margin: 0; font-weight: 600; letter-spacing: -0.01em; }
+p { margin: 0; }
+[hidden] { display: none !important; }
+
+/* ---------------------------------------------------------------- landing */
+.landing { min-height: 100%; display: flex; flex-direction: column; }
+.topbar {
+  display: flex; align-items: center; gap: 16px; padding: 14px 28px;
+  border-bottom: 1px solid var(--line-soft);
+  background: rgba(15, 16, 18, 0.88); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+}
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: 0.04em; }
+.brand svg { width: 22px; height: 22px; }
+.brand .sub {
+  font: 500 11px/1 var(--mono); letter-spacing: 0.08em; color: var(--muted);
+  padding-left: 12px; border-left: 1px solid var(--line); text-transform: uppercase;
+}
+.spacer { flex: 1; }
+.chip {
+  display: inline-flex; align-items: center; gap: 8px; padding: 5px 12px; border-radius: 999px;
+  border: 1px solid var(--btn-line); background: transparent; color: var(--faint);
+  font: 400 11.5px/1.3 var(--mono); white-space: nowrap;
+}
+.chip i { width: 7px; height: 7px; border-radius: 50%; background: var(--live); flex: none; }
+.btn {
+  display: inline-flex; align-items: center; gap: 10px; border-radius: 8px; cursor: pointer;
+  padding: 11px 18px; font-weight: 600; text-decoration: none; border: 1px solid transparent;
+  transition: background 0.15s, border-color 0.15s;
+}
+.btn-primary { background: var(--ochre); color: #16110a; }
+.btn-primary:hover { background: var(--ochre-2); }
+.btn-quiet { border-color: var(--btn-line); color: var(--text); background: transparent; border-radius: 6px; }
+.btn-quiet:hover { border-color: var(--btn-line-hover); background: transparent; }
+.btn-sm { padding: 7px 12px; font-size: 13px; font-weight: 500; }
+
+.hero {
+  position: relative; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+  gap: 40px; align-items: center; padding: 56px 28px 40px; max-width: 1320px; width: 100%;
+  margin: 0 auto;
+}
+.hero h1 { font-size: clamp(34px, 4.6vw, 58px); line-height: 1.04; font-weight: 700; letter-spacing: -0.025em; }
+.hero h1 em { font-style: normal; color: var(--ochre); }
+.hero .lede { margin-top: 20px; color: var(--muted); font-size: 17px; line-height: 1.6; max-width: 34em; }
+.hero .actions { margin-top: 28px; display: flex; gap: 12px; flex-wrap: wrap; }
+.hero .place { margin-bottom: 18px; }
+.hero-map {
+  border: 1px solid var(--line); border-radius: 10px; background: transparent;
+  padding: 10px; position: relative; overflow: hidden;
+}
+.hero-map svg { width: 100%; height: auto; display: block; }
+.hero-map .cap {
+  position: absolute; left: 18px; bottom: 16px; right: 18px; display: flex; gap: 8px 14px;
+  flex-wrap: wrap; justify-content: space-between; color: var(--muted); pointer-events: none;
+}
+.hero-map .cap span { background: rgba(17, 18, 13, 0.86); border: 1px solid var(--line-soft); border-radius: 6px; padding: 4px 8px; font-size: 11px; }
+.flow { animation: flow 2.4s linear infinite; }
+@keyframes flow { to { stroke-dashoffset: var(--loop, -12); } }
+@media (prefers-reduced-motion: reduce) { .flow { animation: none; } }
+
+.modules {
+  max-width: 1320px; width: 100%; margin: 0 auto; padding: 8px 28px 40px;
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px;
+}
+.module { border-top: 1px solid var(--line); padding-top: 18px; display: grid; gap: 8px; align-content: start; }
+.module h3 { font-size: 18px; }
+.module p { color: var(--muted); max-width: 32em; }
+.module .fact { margin-top: 6px; font: 400 12px/1.4 var(--mono); color: var(--ochre); }
+.evaluated {
+  max-width: 1320px; width: 100%; margin: 0 auto 28px; padding: 22px 28px;
+}
+.evaluated-inner {
+  border: 1px solid var(--line); border-radius: 10px; background: var(--surface);
+  padding: 22px 24px; display: grid; grid-template-columns: 1.1fr repeat(4, minmax(0, 1fr)); gap: 20px;
+  align-items: start;
+}
+.evaluated h2 { font-size: 18px; }
+.evaluated .intro p { color: var(--muted); margin-top: 6px; font-size: 13px; }
+.stat .v { font-size: 30px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; }
+.stat .v small { font-size: 14px; color: var(--muted); font-weight: 500; }
+.stat .k { color: var(--muted); font-size: 12.5px; margin-top: 4px; }
+.stat .t { font: 400 11px/1.4 var(--mono); color: var(--faint); margin-top: 6px; }
+.footer {
+  margin-top: auto; border-top: 1px solid var(--line-soft); padding: 18px 28px; color: var(--faint);
+  display: flex; gap: 20px; flex-wrap: wrap; justify-content: space-between; font-size: 12.5px;
+}
+
+/* ---------------------------------------------------------------- app shell */
+.app { display: grid; grid-template-columns: 76px minmax(0, 1fr); min-height: 100%; }
+.rail {
+  position: sticky; top: 0; height: 100vh; border-right: 1px solid var(--line);
+  background: rgba(15, 16, 18, 0.88); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); display: flex; flex-direction: column; align-items: stretch;
+  padding: 14px 0; gap: 4px;
+}
+.rail .logo { display: grid; place-items: center; height: 44px; margin-bottom: 14px; text-decoration: none; }
+.rail .logo svg { width: 24px; height: 24px; }
+.nav-item {
+  display: grid; justify-items: center; gap: 5px; padding: 10px 4px; text-decoration: none;
+  color: var(--faint); font: 500 9.5px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase;
+  border-left: 2px solid transparent;
+}
+.nav-item svg { width: 19px; height: 19px; }
+.nav-item:hover { color: var(--text); }
+.nav-item[aria-current="page"] { color: var(--ochre); border-left-color: var(--ochre); background: var(--ochre-soft); }
+.rail .bottom { margin-top: auto; }
+.main { min-width: 0; display: flex; flex-direction: column; }
+.appbar {
+  display: flex; align-items: center; gap: 14px; padding: 12px 24px; border-bottom: 1px solid var(--line-soft);
+  position: sticky; top: 0; background: rgba(15, 16, 18, 0.88); backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px); z-index: 5;
+}
+.appbar .title { font-weight: 700; letter-spacing: 0.04em; }
+.appbar .crumb { font: 500 11px/1 var(--mono); letter-spacing: 0.08em; color: var(--muted); text-transform: uppercase; padding-left: 14px; border-left: 1px solid var(--line); }
+.page { padding: 22px 24px 40px; display: grid; gap: 18px; align-content: start; }
+.page-head { display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; }
+.page-head h1 { font-size: 26px; }
+.page-head .desc { color: var(--muted); max-width: 58em; margin-top: 6px; }
+
+.card {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: none;
+  padding: 16px 18px; min-width: 0;
+}
+.card-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px; }
+.card-head .ic { width: 18px; height: 18px; color: var(--muted); align-self: center; flex: none; }
+.card-head h2 { font-size: 15px; }
+.card-head .aside { margin-left: auto; color: var(--faint); font: 400 11px/1.2 var(--mono); }
+
+.badge {
+  display: inline-flex; align-items: center; gap: 7px; padding: 4px 10px; border-radius: 999px;
+  font: 500 11px/1.2 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; border: 1px solid;
+}
+.badge svg { width: 11px; height: 11px; }
+.b-suspected { color: var(--ochre-2); border-color: rgba(247, 189, 106, 0.4); }
+.b-probable { color: #16110a; background: var(--ochre); border-color: var(--ochre); }
+.b-quiet { color: var(--muted); border-color: var(--line); }
+.synthetic {
+  display: inline-flex; align-items: center; gap: 4px; font: 400 10px/1 var(--mono); color: var(--faint);
+  border: 1px solid var(--chip-line); border-radius: 5px; padding: 3px 6px; letter-spacing: 0.06em; background: transparent; color: var(--muted);
+}
+
+/* ---------------------------------------------------------------- console */
+.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.kpi { background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--stripe, var(--line));
+  border-radius: 10px; padding: 14px 16px; }
+.kpi-head { display: flex; gap: 10px; align-items: center; }
+.kpi-head svg { width: 18px; height: 18px; flex: none; color: var(--stripe); }
+.kpi.s-event { --stripe: var(--ochre); }
+.kpi.s-source { --stripe: var(--rust); }
+.kpi.s-zones { --stripe: var(--slate); }
+.kpi.s-evidence { --stripe: var(--sage); }
+.kpi .v { font-size: 22px; font-weight: 600; letter-spacing: -0.01em; margin-top: 4px; }
+.kpi .s { color: var(--muted); font-size: 12px; margin-top: 2px; }
+.console { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(320px, 1fr); gap: 18px; align-items: start; }
+.col { display: grid; gap: 18px; min-width: 0; }
+.map-wrap { position: relative; border-radius: var(--r-sm); background: transparent; border: 1px solid var(--line); overflow: hidden; }
+.map-wrap svg { display: block; width: 100%; height: auto; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 12px; color: var(--muted); font-size: 12px; }
+.legend span { display: inline-flex; align-items: center; gap: 7px; }
+.sw { width: 12px; height: 12px; border-radius: 50%; display: inline-block; flex: none; }
+.sw-line { width: 18px; height: 4px; border-radius: 2px; display: inline-block; }
+.sw-sq { width: 12px; height: 12px; border-radius: 2px; display: inline-block; }
+
+.slider { display: grid; gap: 10px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line-soft); }
+.slider-row { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.slider-row .now { font-weight: 600; }
+.slider input[type="range"] { width: 100%; accent-color: var(--ochre); }
+.ticks { display: grid; font: 400 10.5px/1.3 var(--mono); color: var(--faint); }
+.ticks span { text-align: center; }
+.ticks span:first-child { text-align: left; }
+.ticks span:last-child { text-align: right; }
+.fp { font: 400 11.5px/1.4 var(--mono); color: var(--muted); word-break: break-all; }
+.fp b { color: var(--text); font-weight: 500; }
+.past { display: inline-flex; gap: 8px; align-items: center; color: var(--ochre-2); font: 500 11px/1.2 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; }
+
+.sources { display: grid; gap: 10px; }
+.src { display: grid; grid-template-columns: 78px minmax(0, 1fr) 46px; gap: 10px; align-items: center; }
+.src .name { font-weight: 600; font-size: 13px; }
+.src .type { color: var(--faint); font-size: 11.5px; }
+.bar { height: 8px; border-radius: 4px; background: var(--surface-3); overflow: hidden; }
+.bar > i { display: block; height: 100%; background: var(--fill); border-radius: 4px; transition: width 0.35s ease; }
+.src .pct { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+.src.top .name { color: var(--ochre-2); }
+.why { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line-soft); color: var(--muted); font-size: 12.5px; display: grid; gap: 4px; }
+.why b { color: var(--text); font-weight: 500; }
+
+.probe { display: grid; gap: 10px; }
+.probe .where { font-size: 17px; font-weight: 600; }
+.probe .meta { display: flex; gap: 16px; flex-wrap: wrap; color: var(--muted); font-size: 12.5px; }
+.probe .effect { background: transparent; border: 1px solid var(--line-key); border-radius: 8px; padding: 10px 12px; color: var(--text); }
+.probe .safe { color: var(--sage-text); font-size: 12px; display: flex; gap: 6px; align-items: center; }
+.probe .alts { color: var(--faint); font-size: 12px; }
+
+.windows { display: grid; gap: 8px; }
+.wrow { display: grid; grid-template-columns: minmax(0, 150px) minmax(0, 1fr); gap: 12px; align-items: center; }
+.wrow .zn { font-size: 12.5px; line-height: 1.25; }
+.wrow .zn small { display: block; color: var(--faint); font-size: 11px; }
+.wrow svg { width: 100%; height: 26px; display: block; }
+.waxis { display: grid; grid-template-columns: minmax(0, 150px) minmax(0, 1fr); gap: 12px; }
+.waxis div:last-child { display: flex; justify-content: space-between; font: 400 10.5px/1 var(--mono); color: var(--faint); }
+
+.evidence { display: grid; gap: 2px; }
+.ev { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 10px; padding: 9px 4px; border-bottom: 1px solid var(--line-soft); align-items: start; }
+.ev:last-child { border-bottom: 0; }
+.ev .what { font-size: 13px; }
+.ev .what b { font-weight: 600; }
+.ev .sub { color: var(--faint); font-size: 11.5px; margin-top: 2px; }
+.ev .t { font: 400 11px/1.6 var(--mono); color: var(--muted); }
+.tag { display: inline-block; margin-top: 5px; font: 400 10.5px/1.3 var(--mono); padding: 2px 6px; border-radius: 4px; }
+.tag-sup { color: var(--ochre-2); background: transparent; border: 1px dashed var(--line-key); }
+.tag-rule { color: var(--sage-text); background: transparent; border: 1px dashed rgba(127, 163, 122, 0.45); }
+.line-through { text-decoration: line-through; text-decoration-color: var(--faint); color: var(--faint); }
+
+/* ---------------------------------------------------------------- replay */
+.replay { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; font: 500 10.5px/1.2 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint); padding: 8px 8px; border-bottom: 1px solid var(--line); }
+td { padding: 9px 8px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+tr.sel td { background: rgba(242, 163, 58, 0.06); }
+tbody tr { cursor: pointer; }
+tbody tr:hover td { background: var(--surface-2); }
+.table-wrap { overflow-x: auto; }
+
+/* ---------------------------------------------------------------- missions */
+.phones { display: grid; grid-template-columns: repeat(3, minmax(0, 320px)); gap: 22px; justify-content: start; }
+.phone { border: 1px solid var(--line); border-radius: 28px; padding: 12px; background: var(--bg-2); }
+.phone .screen { border-radius: 18px; background: var(--surface); border: 1px solid var(--line-soft); min-height: 560px; padding: 18px 16px; display: flex; flex-direction: column; gap: 14px; }
+.phone .status { display: flex; justify-content: space-between; font: 400 11px/1 var(--mono); color: var(--faint); }
+.phone h3 { font-size: 19px; }
+.phone .step { color: var(--faint); font: 500 10.5px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; }
+.phone .box { border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: grid; gap: 6px; background: transparent; }
+.phone .box .k { color: var(--faint); font-size: 11.5px; }
+.phone .big { width: 100%; justify-content: center; padding: 15px; font-size: 15px; margin-top: auto; }
+.phone .choice { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.phone .choice div { border: 1px solid var(--line); border-radius: 12px; padding: 16px 10px; text-align: center; font-weight: 600; }
+.phone .choice .on { border-color: var(--rust); background: transparent; }
+.offline { display: flex; gap: 8px; align-items: center; color: var(--ochre-2); font-size: 12.5px; }
+.result-big { font-size: 34px; font-weight: 700; letter-spacing: -0.02em; line-height: 1; }
+
+/* ---------------------------------------------------------------- health */
+.notice {
+  border: 1px solid var(--line-key); background: transparent; border-radius: 10px;
+  padding: 12px 16px; display: flex; gap: 12px; align-items: flex-start;
+}
+.notice b { color: var(--ochre-2); }
+.health { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 18px; align-items: start; }
+.zlist { display: grid; gap: 0; }
+.zrow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--line-soft); }
+.zrow:last-child { border-bottom: 0; }
+.zrow .n { font-weight: 600; }
+.zrow .d { color: var(--faint); font-size: 12px; margin-top: 2px; }
+.zrow .w { font: 500 12.5px/1.4 var(--mono); text-align: right; }
+.zrow .w small { display: block; color: var(--faint); font-weight: 400; }
+.boundary { display: grid; grid-template-columns: 1fr auto 1fr; gap: 14px; align-items: center; margin-top: 14px; }
+.boundary .side { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 12.5px; color: var(--muted); }
+.boundary .side b { color: var(--text); display: block; font-size: 11px; font-family: var(--mono); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 4px; }
+.boundary .arrow { color: var(--ochre); font: 500 12px/1.3 var(--mono); text-align: center; }
+
+/* ---------------------------------------------------------------- benchmarks */
+.bench { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.goal { display: grid; grid-template-columns: 54px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--line-soft); }
+.goal:last-child { border-bottom: 0; }
+.goal .g { font: 500 12px/1 var(--mono); color: var(--faint); }
+.goal .l { font-weight: 500; }
+.goal .l small { display: block; color: var(--faint); font-weight: 400; font-size: 12px; margin-top: 2px; }
+.goal .r { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+.goal .r small { display: block; font-weight: 400; color: var(--faint); font-size: 11px; font-family: var(--mono); }
+.met { color: var(--sage-text); }
+.near { color: var(--ochre-2); }
+.miss { color: var(--rust); }
+.chart svg { width: 100%; height: auto; display: block; }
+.chart text { font-family: var(--mono); font-size: 10.5px; fill: var(--faint); }
+.note { color: var(--muted); font-size: 12.5px; margin-top: 10px; }
+
+/* ---------------------------------------------------------------- evidence drawer */
+.kpi-btn { font: inherit; color: inherit; text-align: left; cursor: pointer; width: 100%;
+  transition: border-color 0.15s, background 0.15s; }
+.kpi-btn:hover { background: var(--surface-2); border-top-color: var(--line-hover); border-right-color: var(--line-hover); border-bottom-color: var(--line-hover); }
+.kpi-open { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; color: var(--faint);
+  font: 500 11px/1 var(--mono); letter-spacing: 0.04em; transition: color 0.15s; }
+.kpi-open svg { width: 11px; height: 11px; }
+.kpi-btn:hover .kpi-open, .kpi-btn[aria-expanded="true"] .kpi-open { color: var(--sage-text); }
+.drawer-backdrop { position: fixed; inset: 0; background: rgba(6, 7, 8, 0.55); z-index: 40; }
+.drawer {
+  position: fixed; top: 0; right: 0; bottom: 0; width: min(460px, 100vw); z-index: 41;
+  background: var(--surface); border-left: 1px solid var(--line); box-shadow: -24px 0 48px rgba(0, 0, 0, 0.35);
+  display: flex; flex-direction: column; padding-top: env(safe-area-inset-top, 0px);
+  transform: translateX(0); transition: transform 0.22s ease;
+}
+.drawer.closing { transform: translateX(100%); }
+@media (prefers-reduced-motion: reduce) { .drawer { transition: none; } }
+.drawer-head { display: flex; gap: 12px; align-items: flex-start; padding: 18px 20px 12px; border-bottom: 1px solid var(--line-soft); }
+.drawer-head h2 { font-size: 19px; margin-top: 4px; }
+.drawer-sub { color: var(--muted); font-size: 12.5px; margin-top: 4px; }
+.drawer-close { margin-left: auto; width: 34px; height: 34px; display: grid; place-items: center; cursor: pointer;
+  background: transparent; border: 1px solid var(--btn-line); border-radius: 8px; color: var(--text); flex: none; }
+.drawer-close:hover { border-color: var(--btn-line-hover); }
+.drawer-close svg { width: 14px; height: 14px; }
+.drawer-filter { display: flex; gap: 6px; padding: 12px 20px; border-bottom: 1px solid var(--line-soft); flex-wrap: wrap; }
+.drawer-filter button { background: transparent; border: 1px solid var(--btn-line); border-radius: 999px; color: var(--muted);
+  font: 500 12px/1 var(--sans); padding: 7px 11px; cursor: pointer; }
+.drawer-filter button:hover { border-color: var(--btn-line-hover); }
+.drawer-filter button[aria-checked="true"] { border-color: var(--ochre); color: var(--ochre); }
+.drawer-body { overflow-y: auto; padding: 6px 20px calc(20px + env(safe-area-inset-bottom, 0px)); flex: 1; }
+.drawer-note { color: var(--faint); font-size: 12px; margin: 8px 0 4px; }
+.ev[hidden] { display: none !important; }
+
+/* ---------------------------------------------------------------- 3D map */
+.deck-box { position: relative; width: 100%; background: #0f100b; border-radius: var(--r-sm); overflow: hidden; }
+.deck-hero { height: clamp(320px, 42vw, 520px); border-radius: 10px; }
+.deck-console { height: clamp(420px, 56vh, 620px); border: 1px solid var(--line); }
+.deck-box canvas { outline: none; }
+.map-tools {
+  position: absolute; top: 12px; right: 12px; display: grid; gap: 6px; z-index: 2;
+}
+.map-tools button {
+  width: 36px; height: 36px; display: grid; place-items: center; cursor: pointer;
+  background: var(--overlay); border: 1px solid var(--line); border-radius: 8px; color: var(--text);
+  font: 500 15px/1 var(--mono);
+}
+.map-tools button:hover { border-color: var(--btn-line-hover); }
+.map-tools button[aria-pressed="true"] { border-color: var(--ochre); color: var(--ochre); }
+.map-tools .sep { height: 4px; }
+.map-hint {
+  position: absolute; left: 12px; bottom: 12px; z-index: 2; pointer-events: none;
+  background: var(--overlay); border: 1px solid var(--line); border-radius: 6px;
+  padding: 6px 9px; color: var(--muted); font: 400 11px/1.4 var(--mono);
+}
+.map-place {
+  position: absolute; left: 12px; top: 12px; z-index: 2; pointer-events: none;
+  background: var(--overlay); border: 1px solid var(--line); border-radius: 8px;
+  padding: 8px 11px; max-width: 280px;
+}
+.map-place b { display: block; font-size: 13px; }
+.map-place span { color: var(--muted); font-size: 11.5px; }
+.map-fallback { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); padding: 20px; text-align: center; }
+.deck-tooltip { max-width: 280px; }
+
+/* ---------------------------------------------------------------- health, interactive */
+.hgrid { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.25fr); gap: 18px; align-items: start; }
+.zpick { display: grid; gap: 8px; max-height: 560px; overflow-y: auto; padding-right: 4px; }
+.zbtn {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; text-align: left; cursor: pointer;
+  background: transparent; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px;
+  transition: border-color 0.15s, background 0.15s;
+}
+.zbtn:hover { border-color: var(--line-hover); background: var(--surface-2); }
+.zbtn[aria-checked="true"] { border-color: var(--line-key); background: transparent; }
+.zbtn .n { font-weight: 600; font-size: 13.5px; }
+.zbtn .d { color: var(--faint); font-size: 11.5px; grid-column: 1; }
+.zbtn .w { font: 500 12px/1.3 var(--mono); grid-row: 1 / span 2; grid-column: 2; align-self: center; text-align: right; }
+.zbtn .w small { display: block; color: var(--faint); font-weight: 400; font-size: 10.5px; }
+.zbtn.quiet .w { color: var(--faint); }
+.zdetail { display: grid; gap: 14px; }
+.zdetail h3 { font-size: 20px; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip2 { font: 400 11.5px/1 var(--mono); padding: 6px 9px; border-radius: 999px; border: 1px dashed var(--chip-line); color: var(--faint); background: transparent; }
+.facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.fact2 { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: transparent; }
+.fact2 .k { color: var(--faint); font-size: 11px; font-family: var(--mono); letter-spacing: 0.06em; text-transform: uppercase; }
+.fact2 .v { font-size: 17px; font-weight: 600; margin-top: 4px; }
+.meter { height: 6px; border-radius: 3px; background: var(--surface-3); overflow: hidden; margin-top: 8px; }
+.meter i { display: block; height: 100%; background: var(--fill); }
+.consider { border-left: 2px solid var(--ochre); padding: 2px 0 2px 12px; color: var(--muted); }
+.consider b { color: var(--text); }
+.scrub { display: grid; gap: 8px; margin-top: 12px; }
+.scrub-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.scrub input[type="range"] { width: 100%; accent-color: var(--ochre); }
+.status-pill { display: inline-flex; gap: 8px; align-items: center; border-radius: 999px; padding: 5px 11px; font: 500 12px/1.2 var(--mono); border: 1px solid var(--line); color: var(--muted); }
+.status-pill.hit { border-color: var(--line-key); color: var(--ochre-2); background: transparent; }
+.wire { font: 400 11.5px/1.5 var(--mono); color: var(--muted); }
+.wire.sent { color: var(--ochre-2); }
+.cds { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 16px; align-items: start; }
+.switch { display: flex; gap: 12px; align-items: flex-start; padding: 9px 0; border-bottom: 1px solid var(--line-soft); cursor: pointer; }
+.switch:last-child { border-bottom: 0; }
+.switch input { appearance: none; width: 36px; height: 20px; border-radius: 999px; background: var(--surface-3); border: 1px solid var(--line); position: relative; flex: none; cursor: pointer; margin: 1px 0 0; }
+.switch input::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--faint); transition: transform 0.15s, background 0.15s; }
+.switch input:checked { background: var(--ochre-soft); border-color: var(--ochre); }
+.switch input:checked::after { transform: translateX(16px); background: var(--ochre); }
+.switch b { display: block; font-weight: 500; }
+.switch small { color: var(--faint); font-size: 12px; }
+.ehr { border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); color: var(--text); padding: 0; overflow: hidden; }
+.ehr .bar2 { background: transparent; border-bottom: 1px solid var(--line-soft); padding: 8px 12px; font: 500 11px/1.2 var(--mono); color: var(--faint); display: flex; justify-content: space-between; }
+.ehr .body { padding: 12px; display: grid; gap: 8px; min-height: 180px; align-content: start; }
+.ehr .card-cds { border: 1px solid var(--line-key); border-left: 3px solid var(--fill); border-radius: 6px; padding: 10px 12px; background: transparent; }
+.ehr .card-cds b { display: block; margin-bottom: 4px; }
+.ehr .card-cds p { font-size: 12.5px; color: var(--muted); }
+.ehr .card-cds small { display: block; margin-top: 8px; color: var(--faint); font-size: 11px; }
+.ehr .none { color: var(--muted); font-size: 12.5px; }
+
+/* ---------------------------------------------------------------- responsive */
+@media (max-width: 1180px) {
+  .console, .replay, .health, .hgrid, .cds { grid-template-columns: minmax(0, 1fr); }
+  .evaluated-inner { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .evaluated .intro { grid-column: 1 / -1; }
+  .phones { grid-template-columns: repeat(auto-fit, minmax(260px, 320px)); }
+}
+@media (max-width: 860px) {
+  .hero { grid-template-columns: minmax(0, 1fr); padding-top: 36px; }
+  .modules { grid-template-columns: minmax(0, 1fr); }
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .bench { grid-template-columns: minmax(0, 1fr); }
+  .topbar .chip { display: none; }
+}
+@media (max-width: 640px) {
+  .app { grid-template-columns: minmax(0, 1fr); }
+  .rail {
+    position: fixed; bottom: 0; top: auto; left: 0; right: 0; height: auto; z-index: 10;
+    flex-direction: row; justify-content: space-around; padding: 4px 0 calc(4px + env(safe-area-inset-bottom, 0px));
+    border-right: 0; border-top: 1px solid var(--line-soft);
+  }
+  .rail .logo, .rail .bottom { display: none; }
+  .nav-item { border-left: 0; border-top: 2px solid transparent; padding: 8px 2px; }
+  .nav-item[aria-current="page"] { border-top-color: var(--ochre); }
+  .page { padding: 18px 16px 90px; }
+  .appbar { padding: 12px 16px; }
+  .appbar .chip, .appbar .crumb { display: none; }
+  .topbar { padding: 14px 16px; }
+  .hero, .modules, .evaluated { padding-inline: 16px; }
+  .evaluated-inner { grid-template-columns: minmax(0, 1fr); }
+  .wrow, .waxis { grid-template-columns: minmax(0, 96px) minmax(0, 1fr); }
+  .boundary { grid-template-columns: minmax(0, 1fr); }
+  .boundary .arrow { transform: rotate(90deg); }
+  .facts { grid-template-columns: minmax(0, 1fr); }
+  .deck-console { height: 440px; }
+}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <pattern id="hatch" width="1" height="1" patternUnits="objectBoundingBox" patternContentUnits="objectBoundingBox">
+      <rect width="1" height="1" fill="#151619"></rect>
+      <path d="M0 .25L.25 0M0 .5L.5 0M0 .75L.75 0M0 1L1 0M.25 1L1 .25M.5 1L1 .5M.75 1L1 .75" stroke="#9a9ca0" stroke-width=".07"></path>
+    </pattern>
+    <symbol id="mark" viewBox="0 0 24 24">
+      <path d="M5 3c0 5 5 5 5 10s-4 5-4 8" fill="none" stroke="#4f8fb5" stroke-width="1.8" stroke-linecap="round"></path>
+      <path d="M13 3c0 4 4 4 4 8s-3 4-3 6" fill="none" stroke="#4f8fb5" stroke-width="1.8" stroke-linecap="round"></path>
+      <circle cx="14" cy="18.5" r="2.6" fill="#f2a33a"></circle>
+    </symbol>
+  </defs>
+</svg>
+
+<div id="landing" class="landing">
+  <header class="topbar">
+    <div class="brand"><svg aria-hidden="true"><use href="#mark"></use></svg>UPSTREAM<span class="sub">Catchment console</span></div>
+    <div class="spacer"></div>
+    <span class="chip"><i></i>Simulated incident · the network, physics and kernel are real</span>
+    <a class="btn btn-quiet btn-sm" href="#/console">Open console</a>
+  </header>
+
+  <section class="hero">
+    <div>
+      <div class="eyebrow place">Kushak Nallah · Barapulla Nala · South Delhi</div>
+      <h1>Where did it come from, and <em>who is downstream?</em></h1>
+      <p class="lede">A resident smells sewage at a nallah-side park. Upstream turns that report, and every report around it, into a calibrated picture of the event: the likely outfall, when each park and bank downstream is exposed, and the next place worth checking.</p>
+      <div class="actions">
+        <a class="btn btn-primary" href="#/console">Enter live console
+          <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        </a>
+        <a class="btn btn-quiet" href="#/benchmarks">How it is evaluated</a>
+      </div>
+    </div>
+    <figure class="hero-map" style="margin:0">
+      <div id="heroMap" class="deck-box deck-hero" role="img" aria-label="3D view of South Delhi with the Barapullah drain system and the most likely contamination route highlighted"></div>
+      <figcaption class="cap"><span class="mono" id="heroCap"></span><span class="mono">© OpenStreetMap contributors</span></figcaption>
+    </figure>
+  </section>
+
+  <section class="modules" aria-label="What Upstream does">
+    <div class="module">
+      <div class="eyebrow">Trace</div>
+      <h3>Which outfall is it?</h3>
+      <p>Every report, including "checked, looks normal", updates an exact posterior over every outfall, start time and duration on the real drain network.</p>
+      <div class="fact" id="factTrace"></div>
+    </div>
+    <div class="module">
+      <div class="eyebrow">Pulse</div>
+      <h3>Who is exposed, and when?</h3>
+      <p>The belief is pushed downstream to every park, footpath and playground beside the drains as an 80% exposure window, calibrated against simulation.</p>
+      <div class="fact" id="factPulse"></div>
+    </div>
+    <div class="module">
+      <div class="eyebrow">Probe</div>
+      <h3>Where should someone look next?</h3>
+      <p>Missions go to the sample that would change the decision most, within walking distance, in daylight, and never beside a drain in monsoon spate.</p>
+      <div class="fact" id="factProbe"></div>
+    </div>
+  </section>
+
+  <section class="evaluated" aria-label="Evaluation">
+    <div class="evaluated-inner">
+      <div class="intro">
+        <h2>Evaluated, not only demonstrated</h2>
+        <p>200 simulated incidents on the real network, scored against hidden ground truth. Targets we miss are reported as missed.</p>
+        <a class="btn btn-quiet btn-sm" href="#/benchmarks" style="margin-top:12px">All results</a>
+      </div>
+      <div class="stat"><div class="v num" id="stCov"></div><div class="k">of true exposure falls inside the 80% window</div><div class="t">target 75–85%</div></div>
+      <div class="stat"><div class="v num" id="stG5"></div><div class="k">clinical signal found earlier than a blind cluster scan</div><div class="t">matched filter vs scan</div></div>
+      <div class="stat"><div class="v num" id="stLat"></div><div class="k">from new evidence to an updated belief, p95</div><div class="t">target under 5 s</div></div>
+      <div class="stat"><div class="v num">0</div><div class="k">HL7 validator errors on the OneAquaHealth IG</div><div class="t">checked on every change</div></div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <span>No patient data enters the environmental system. Only aggregate counts reach the health zone, and only test results leave it.</span>
+    <span class="mono">network <span id="footNet"></span> · params <span id="footParams"></span></span>
+  </footer>
+</div>
+
+<div id="app" class="app" hidden>
+  <nav class="rail" aria-label="Sections">
+    <a class="logo" href="#/" aria-label="Upstream home"><svg aria-hidden="true"><use href="#mark"></use></svg></a>
+    <a class="nav-item" href="#/console" data-route="console">
+      <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5l4.5-2 5 2L17 3v12l-4.5 2-5-2L3 17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M7.5 3v12M12.5 5v12" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>Console</a>
+    <a class="nav-item" href="#/replay" data-route="replay">
+      <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 6v4l3 2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Replay</a>
+    <a class="nav-item" href="#/missions" data-route="missions">
+      <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 17s5-5 5-9a5 5 0 10-10 0c0 4 5 9 5 9z" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="10" cy="8" r="1.8" fill="currentColor"/></svg>Missions</a>
+    <a class="nav-item" href="#/health" data-route="health">
+      <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v14M3 10h14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><rect x="2.5" y="2.5" width="15" height="15" rx="3" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>Health</a>
+    <a class="nav-item" href="#/benchmarks" data-route="benchmarks">
+      <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 16V9M10 16V4M16 16v-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Bench</a>
+    <div class="bottom">
+      <a class="nav-item" href="#/" data-route="home">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12 4l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Exit</a>
+    </div>
+  </nav>
+  <div class="main">
+    <header class="appbar">
+      <span class="title">UPSTREAM</span>
+      <span class="crumb">Barapullah drain system · South Delhi</span>
+      <div class="spacer"></div>
+      <span class="chip"><i></i>Simulated incident · the network, physics and kernel are real</span>
+    </header>
+
+    <!-- console -->
+    <section class="page" data-view="console" aria-labelledby="consoleTitle">
+      <div class="page-head">
+        <div>
+          <div class="eyebrow">Episode</div>
+          <h1 id="consoleTitle">EE-7C31 <span id="stateBadge"></span></h1>
+          <p class="desc" id="consoleDesc"></p>
+        </div>
+      </div>
+      <div class="kpis">
+        <div class="kpi s-event"><div class="kpi-head"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3L18 17H2z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4M10 14.5v.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><div class="eyebrow">Something is happening</div></div><div class="v num" id="kEvent"></div><div class="s">probability of any event, not only this source</div></div>
+        <div class="kpi s-source"><div class="kpi-head"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="5" cy="10" r="2.2" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="15" cy="5" r="2.2" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="15" cy="15" r="2.2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M7 9l6-3M7 11l6 3" stroke="currentColor" stroke-width="1.5"/></svg><div class="eyebrow">Most likely source</div></div><div class="v" id="kTop"></div><div class="s" id="kTopS"></div></div>
+        <div class="kpi s-zones"><div class="kpi-head"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="6.5" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="10" cy="10" r="2.2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 1.5v3M10 15.5v3M1.5 10h3M15.5 10h3" stroke="currentColor" stroke-width="1.5"/></svg><div class="eyebrow">Zones expecting exposure</div></div><div class="v num" id="kZones"></div><div class="s" id="kZonesS"></div></div>
+        <button type="button" class="kpi kpi-btn s-evidence" id="openEvidence" aria-haspopup="dialog" aria-controls="evidenceDrawer" aria-expanded="false"><div class="kpi-head"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 2.5h7l3.5 3.5v11.5H5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M12 2.5V6h3.5M8 10h5M8 13h5" stroke="currentColor" stroke-width="1.5"/></svg><div class="eyebrow">Evidence</div><span class="kpi-open" aria-hidden="true">Open log <svg viewBox="0 0 12 12"><path d="M4 2.5L7.5 6 4 9.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div><div class="v num" id="kEv"></div><div class="s" id="kEvS"></div></button>
+      </div>
+      <div class="console">
+        <div class="col">
+          <div class="card">
+            <div class="card-head"><svg class="ic" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2l7 4v8l-7 4-7-4V6z M3 6l7 4 7-4 M10 10v8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><h2>Drain network, 3D</h2><span class="aside">drag to pan · scroll to zoom · right-drag to tilt</span></div>
+            <div id="map" class="deck-box deck-console" role="application" aria-label="3D map of the Barapullah drain system. Use the buttons to zoom, tilt and reset the view.">
+              <div class="map-place"><b>Kushak Nallah → Barapulla Nala</b><span>South Delhi to the Yamuna at Sarai Kale Khan</span></div>
+              <div class="map-tools" role="toolbar" aria-label="Map view">
+                <button type="button" id="zoomIn" aria-label="Zoom in" title="Zoom in">+</button>
+                <button type="button" id="zoomOut" aria-label="Zoom out" title="Zoom out">−</button>
+                <div class="sep"></div>
+                <button type="button" id="tilt" aria-label="Switch between 3D and flat view" aria-pressed="true" title="3D / flat">3D</button>
+                <button type="button" id="rotL" aria-label="Rotate left" title="Rotate left">↺</button>
+                <button type="button" id="rotR" aria-label="Rotate right" title="Rotate right">↻</button>
+                <div class="sep"></div>
+                <button type="button" id="focusCorr" aria-label="Fly to the likely contamination route" title="Fly to the likely route">◎</button>
+                <button type="button" id="resetView" aria-label="Reset the view" title="Reset view">⌂</button>
+              </div>
+              <div class="map-hint" id="mapHint">Trackers mark zones expecting exposure · buildings from OpenStreetMap</div>
+            </div>
+            <div class="legend" aria-label="Map legend">
+              <span><i class="sw-line" style="background:#4f8fb5"></i>Drain</span>
+              <span><i class="sw-line" style="background:var(--ochre)"></i>Likely contamination route</span>
+              <span><i class="sw" style="border:2px solid var(--ochre-2);background:transparent"></i>Outfall, sized by probability</span>
+              <span><i class="sw" style="background:var(--rust)"></i>Contamination seen</span>
+              <span><i class="sw" style="border:2px solid var(--sage)"></i>Checked, looked normal</span>
+              <span><i class="sw" style="background:var(--rust);box-shadow:0 0 0 3px var(--bg-2),0 0 0 4.5px var(--ochre-2)"></i>Zone tracker: ring size is the chance of exposure, colour how soon</span>
+              <span><i class="sw-sq" style="border:1.5px dashed var(--faint)"></i>Not enough evidence here</span>
+              <span class="synthetic">SYNTHETIC</span><span style="margin-left:-12px">outfall locations are illustrative</span>
+            </div>
+            <div class="slider">
+              <div class="slider-row">
+                <span class="past" id="pastFlag"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M6 3.5V6l1.8 1.2" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>Viewing a past belief</span>
+                <span class="now" id="nowLabel"></span>
+                <div class="spacer"></div>
+                <button class="btn btn-quiet btn-sm" id="playBtn" type="button">Play</button>
+                <button class="btn btn-quiet btn-sm" id="latestBtn" type="button">Latest</button>
+              </div>
+              <label for="beliefSlider" class="eyebrow">Belief over time</label>
+              <input id="beliefSlider" type="range" min="0" step="1">
+              <div class="ticks" id="ticks"></div>
+              <div class="fp">Fingerprint <b id="fp"></b><br>Recomputing from this fingerprint reproduces this belief bit for bit.</div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h2>Exposure windows</h2><span class="aside">80% credible window per zone, local time</span></div>
+            <div class="windows" id="windows"></div>
+          </div>
+        </div>
+        <div class="col">
+          <div class="card">
+            <div class="card-head"><h2>Likely source</h2><span class="aside">given that something is happening</span></div>
+            <div class="sources" id="sources"></div>
+            <div class="why" id="why"></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h2>Next best sample</h2><span class="aside">chosen to separate the suspects</span></div>
+            <div class="probe" id="probe"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- replay -->
+    <section class="page" data-view="replay" aria-labelledby="replayTitle" hidden>
+      <div class="page-head"><div><div class="eyebrow">Belief replay</div><h1 id="replayTitle">What did the system believe, and when?</h1>
+        <p class="desc">Every belief is stored with a fingerprint of the exact evidence and model versions behind it. Pick any moment to see the console as it was then.</p></div></div>
+      <div class="replay">
+        <div class="card chart">
+          <div class="card-head"><h2>Belief as evidence arrived</h2><span class="aside">probability of each outfall, given an event</span></div>
+          <svg id="replayChart" role="img" aria-label="Line chart of source probabilities across the episode"></svg>
+          <div class="legend" id="replayLegend"></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h2>Stored beliefs</h2><span class="aside">select a row to open it</span></div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Time</th><th>After</th><th>Event</th><th>Top source</th><th>Fingerprint</th></tr></thead>
+            <tbody id="replayRows"></tbody>
+          </table></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- missions -->
+    <section class="page" data-view="missions" aria-labelledby="missionsTitle" hidden>
+      <div class="page-head"><div><div class="eyebrow">Volunteer mission app</div><h1 id="missionsTitle">One task, one place, one result</h1>
+        <p class="desc">What a volunteer sees on their phone, from the offer to the measured effect of their check. It works without signal and keeps the time the water was actually checked.</p></div></div>
+      <div class="phones" id="phones"></div>
+    </section>
+
+    <!-- health -->
+    <section class="page" data-view="health" aria-labelledby="healthTitle" hidden>
+      <div class="page-head"><div><div class="eyebrow">Public-health view</div><h1 id="healthTitle">Exposure context for EE-7C31</h1>
+        <p class="desc">Where and when people may have been in contact with contaminated water. Candidate sources are deliberately left out of this view.</p></div></div>
+      <div class="notice" role="note">
+        <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" style="flex:none;margin-top:2px"><circle cx="9" cy="9" r="7.5" fill="none" stroke="#f7bd6a" stroke-width="1.4"/><path d="M9 5v5M9 12.5v.5" stroke="#f7bd6a" stroke-width="1.6" stroke-linecap="round"/></svg>
+        <div><b>Environmental context, not a diagnosis.</b> Advisory decisions are made by public-health officers. Upstream never contacts patients and never issues advisories.</div>
+      </div>
+      <div class="hgrid">
+        <div class="card">
+          <div class="card-head"><h2>Zones along the drains</h2><span class="aside" id="healthAside"></span></div>
+          <div class="zpick" id="zpick" role="radiogroup" aria-label="Choose a zone"></div>
+        </div>
+        <div class="card zdetail" id="zdetail" aria-live="polite"></div>
+      </div>
+      <div class="hgrid">
+        <div class="card chart">
+          <div class="card-head"><h2>Clinical signal, day by day</h2><span class="aside">acute gastroenteritis · <span id="clinZone"></span></span></div>
+          <div class="scrub-row"><span class="status-pill" id="clinStatus"></span><span class="note" id="clinSub" style="margin:0"></span></div>
+          <svg id="clinChart" role="img" aria-label="Daily presentations against the expected baseline and the predicted episode curve" style="margin-top:12px"></svg>
+          <div class="scrub">
+            <label for="daySlider" class="eyebrow">Days since exposure</label>
+            <div class="scrub-row"><input id="daySlider" type="range" min="0" max="20" step="1" value="20" style="flex:1"><button class="btn btn-quiet btn-sm" id="dayPlay" type="button">Replay the days</button></div>
+          </div>
+          <div class="legend">
+            <span><i class="sw-sq" style="background:var(--surface-3);border:1px solid var(--line)"></i>Presentations per day</span>
+            <span><i class="sw-line" style="background:var(--muted)"></i>Expected without an episode</span>
+            <span><i class="sw-line" style="background:var(--ochre)"></i>Predicted if the episode made people ill</span>
+            <span><i class="sw-sq" style="background:repeating-linear-gradient(45deg,#9a9ca0 0 1.5px,transparent 1.5px 5px)"></i>Fewer than 5, suppressed</span>
+          </div>
+          <div class="boundary" aria-label="What crosses the health boundary">
+            <div class="side"><b>Health zone</b>Daily counts per area. They stay here and are never sent anywhere.</div>
+            <div class="arrow" id="clinArrow">nothing<br>yet</div>
+            <div class="side"><b>Environmental system</b><span class="wire" id="clinWire"></span></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h2>What a clinician would see</h2><span class="aside">CDS Hooks card, shown only when all three hold</span></div>
+          <div class="cds">
+            <div id="cdsSwitches"></div>
+            <div class="ehr" aria-live="polite">
+              <div class="bar2"><span>EHR · patient-view</span><span id="ehrTime"></span></div>
+              <div class="body" id="ehrBody"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- benchmarks -->
+    <section class="page" data-view="benchmarks" aria-labelledby="benchTitle" hidden>
+      <div class="page-head"><div><div class="eyebrow">Evaluation</div><h1 id="benchTitle">200 incidents, scored against hidden truth</h1>
+        <p class="desc">Simulated on the real Barapullah drain network with its own transport, detection and illness models, none shared with the kernel. The same run gates every change in CI.</p></div></div>
+      <div class="bench">
+        <div class="card">
+          <div class="card-head"><h2>Goals</h2><span class="aside">seed 20260922</span></div>
+          <div id="goals"></div>
+        </div>
+        <div class="col">
+          <div class="card chart">
+            <div class="card-head"><h2>Finding the source from citizen reports</h2><span class="aside">true source in the top 3</span></div>
+            <svg id="accChart" role="img" aria-label="Top-3 accuracy against number of reports, Upstream versus the nearest-upstream heuristic"></svg>
+            <div class="legend"><span><i class="sw-line" style="background:var(--ochre)"></i>Upstream</span><span><i class="sw-line" style="background:var(--water)"></i>Nearest outfall upstream of the report</span></div>
+          </div>
+          <div class="card chart">
+            <div class="card-head"><h2>Belief in the true source after sampling</h2><span class="aside">mean over 75 incidents</span></div>
+            <svg id="g3Chart" role="img" aria-label="Belief in the true source after 3, 5 and 10 samples for each strategy"></svg>
+            <p class="note">Test strips miss about one reading in four, and most spills have ended before the first mission arrives. On the dense Barapullah network, sampling the points nearest the report does better than the mission planner, which misses the 30% target.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/deck.gl@9.0.38/dist.min.js"></script>
+<div class="drawer-backdrop" id="evidenceBackdrop" hidden></div>
+<aside class="drawer" id="evidenceDrawer" role="dialog" aria-modal="true" aria-labelledby="evidenceTitle" hidden>
+  <header class="drawer-head">
+    <div>
+      <div class="eyebrow">Episode EE-7C31</div>
+      <h2 id="evidenceTitle">Evidence log</h2>
+      <p class="drawer-sub" id="evidenceSub"></p>
+    </div>
+    <button type="button" class="drawer-close" id="closeEvidence" aria-label="Close the evidence log">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+    </button>
+  </header>
+  <div class="drawer-filter" role="radiogroup" aria-label="Show">
+    <button type="button" role="radio" aria-checked="true" data-filter="all">All</button>
+    <button type="button" role="radio" aria-checked="false" data-filter="positive">Contamination seen</button>
+    <button type="button" role="radio" aria-checked="false" data-filter="negative">Looked normal</button>
+  </div>
+  <div class="drawer-body">
+    <p class="drawer-note">Newest first. Nothing is ever deleted: a withdrawn report stays here, struck through.</p>
+    <div class="evidence" id="evidence"></div>
+  </div>
+</aside>
+
+<script id="data" type="application/json">__DATA__</script>
+<script id="basemap" type="application/json">__BASEMAP__</script>
+<script id="bench" type="application/json">__BENCH__</script>
+<script>
+(() => {
+"use strict";
+const D = JSON.parse(document.getElementById("data").textContent);
+const B = JSON.parse(document.getElementById("bench").textContent);
+const S = D.snapshots;
+const TZ = "Asia/Kolkata";
+const fmtT = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: TZ });
+const fmtD = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: TZ });
+const hm = (x) => fmtT.format(typeof x === "number" ? new Date(x * 1000) : new Date(x));
+const pct = (p, d = 0) => (p * 100).toFixed(d) + "%";
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const NS = "http://www.w3.org/2000/svg";
+
+const outfallByNode = Object.fromEntries(D.outfalls.map((o) => [o.node_id, o]));
+const typeLabel = { cso: "Combined sewer overflow", storm_outfall: "Storm outfall", misconnection: "Misconnection", industrial: "Industrial" };
+const shortType = { cso: "sewer overflow", storm_outfall: "storm outfall", misconnection: "misconnection", industrial: "industrial" };
+const zoneById = Object.fromEntries(D.zones.map((z) => [z.zone_id, z]));
+const nameOf = (id) => outfallByNode[id] ? outfallByNode[id].outfall_id : id;
+const cond = (s, k) => (s.marginals[k] || 0) / Math.max(s.p_event, 1e-12);
+const entries = D.outfalls.map((o) => o.node_id);
+const ranked = (s) => [...entries].sort((a, b) => cond(s, b) - cond(s, a));
+
+// ---------- geometry (lon/lat throughout; deck.gl projects)
+const el = (tag, attrs, parent) => {
+  const n = document.createElementNS(NS, tag);
+  for (const k in attrs) n.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(n);
+  return n;
+};
+const BM = JSON.parse(document.getElementById("basemap").textContent);
+const outEdge = {};
+D.edges.forEach((e, i) => { if (!(e.from in outEdge)) outEdge[e.from] = i; });
+const pathOf = {};
+entries.forEach((n) => {
+  const p = []; let cur = n; const seen = new Set();
+  while (cur in outEdge && !seen.has(cur)) { seen.add(cur); const i = outEdge[cur]; p.push(i); cur = D.edges[i].to; }
+  pathOf[n] = p;
+});
+const corridor = (s) => {
+  const w = new Float64Array(D.edges.length);
+  entries.forEach((n) => { const p = cond(s, n); pathOf[n].forEach((i) => { w[i] += p; }); });
+  return w;
+};
+const pairs = (flat) => { const out = []; for (let i = 0; i < flat.length; i += 2) out.push([flat[i], flat[i + 1]]); return out; };
+const mix = (a, b, t) => a.map((v, i) => Math.round(v + (b[i] - v) * t));
+const C = { ochre: [242, 163, 58], sand: [247, 189, 106], rust: [229, 83, 61], sage: [127, 163, 122],
+  drain: [79, 143, 181], road: [40, 41, 45], bldg: [34, 35, 39], water: [16, 26, 34], green: [22, 34, 25], faint: [120, 122, 128] };
+const centroid = (ring) => { let x = 0, y = 0; ring.forEach(([a, b]) => { x += a; y += b; }); return [x / ring.length, y / ring.length]; };
+const metresPerDeg = [111320 * Math.cos(28.58 * Math.PI / 180), 110540];
+const nearEvidence = (zone, evs) => evs.some((e) => {
+  const a = D.nodes[e.node_id], b = D.nodes[zone.node_id];
+  return a && b && Math.hypot((a[0] - b[0]) * metresPerDeg[0], (a[1] - b[1]) * metresPerDeg[1]) < 700;
+});
+const evidenceAt = (i) => D.evidence.slice(0, S[i].evidence_count);
+const buildings = BM.buildings.map(([h, known, flat]) => ({ h, known, polygon: pairs(flat) }));
+const roads = BM.roads.map(([w, name, flat]) => ({ w, name, path: pairs(flat) }));
+const water = BM.water.map((flat) => pairs(flat));
+const green = BM.green.map(([name, flat]) => ({ name, polygon: pairs(flat) }));
+const PLACES = [
+  ["Lodhi Garden", 77.2197, 28.5933], ["Lodhi Colony", 77.2235, 28.5815], ["Jangpura", 77.2410, 28.5827],
+  ["Nizamuddin", 77.2476, 28.5893], ["Humayun's Tomb", 77.2507, 28.5933], ["Sarai Kale Khan", 77.2585, 28.5870],
+  ["Defence Colony", 77.2320, 28.5730], ["Lajpat Nagar", 77.2433, 28.5677], ["Green Park", 77.2070, 28.5590],
+  ["Safdarjung Enclave", 77.1985, 28.5650], ["Andrews Ganj", 77.2240, 28.5665], ["Chirag Delhi", 77.2270, 28.5465],
+];
+// OSM leaves many small parks unnamed; the compiler labels them "park 32". Name them by
+// the nearest neighbourhood instead, which is how a resident would say where they are.
+const nearestPlace = ([x, y]) => PLACES.reduce((best, p) => {
+  const d = Math.hypot((p[1] - x) * metresPerDeg[0], (p[2] - y) * metresPerDeg[1]);
+  return d < best[1] ? [p[0], d] : best;
+}, ["", Infinity])[0];
+D.zones.forEach((z) => {
+  const m = /^(park|playground|garden|dog_park|nature_reserve|allotments|recreation_ground|zone)[ _]?\d+$/i.exec(z.name || "");
+  if (m) {
+    const kind = m[1].replace(/_/g, " ");
+    z.name = `${kind[0].toUpperCase()}${kind.slice(1)} near ${nearestPlace(centroid(z.ring))}`;
+  }
+});
+const HOME = { longitude: 77.2345, latitude: 28.5805, zoom: 14.15, pitch: 52, bearing: -22 };
+const haveDeck = typeof window.deck !== "undefined";
+const lighting = haveDeck ? new deck.LightingEffect({
+  ambient: new deck.AmbientLight({ color: [238, 241, 246], intensity: 1.0 }),
+  sun: new deck.DirectionalLight({ color: [236, 240, 248], intensity: 1.35, direction: [-3, -8, -4] }),
+}) : null;
+const MATERIAL = { ambient: 0.45, diffuse: 0.6, shininess: 16, specularColor: [52, 56, 62] };
+
+function baseLayers(prefix) {
+  return [
+    new deck.SolidPolygonLayer({ id: prefix + "water", data: water, getPolygon: (d) => d, getFillColor: C.water }),
+    new deck.SolidPolygonLayer({ id: prefix + "green", data: green, getPolygon: (d) => d.polygon, getFillColor: C.green }),
+    new deck.PathLayer({ id: prefix + "roads", data: roads, getPath: (d) => d.path, getColor: (d) => d.w >= 3 ? [56, 57, 62] : C.road,
+      getWidth: (d) => ({ 5: 18, 4: 14, 3: 10, 2: 7 })[d.w] || 4, widthUnits: "meters", widthMinPixels: 0.6, capRounded: true, jointRounded: true }),
+    new deck.PathLayer({ id: prefix + "drains", data: D.edges, getPath: (d) => d.ll, getColor: C.drain, getWidth: 7,
+      widthUnits: "meters", widthMinPixels: 1.6, capRounded: true, jointRounded: true }),
+  ];
+}
+function buildingLayer(prefix) {
+  return new deck.PolygonLayer({ id: prefix + "buildings", data: buildings, getPolygon: (d) => d.polygon, extruded: true,
+    getElevation: (d) => d.h, getFillColor: C.bldg, stroked: false, material: MATERIAL });
+}
+function beliefLayers(prefix, s, i, interactive) {
+  const w = corridor(s);
+  const hot = D.edges.map((e, k) => ({ e, p: w[k] })).filter((d) => d.p >= 0.03);
+  const evs = i == null ? [] : evidenceAt(i);
+  const t = new Date(s.ts).getTime() / 1000;
+  const zones = D.zones.map((z) => {
+    const zw = s.zones[z.zone_id];
+    const exposed = !!(zw && zw.lo !== null && zw.p_peak >= 0.05);
+    return { z, zw, exposed, known: exposed || nearEvidence(z, evs), c: centroid(z.ring) };
+  });
+  const layers = [
+    new deck.PathLayer({ id: prefix + "route", data: hot, getPath: (d) => d.e.ll, widthUnits: "meters", widthMinPixels: 2,
+      getWidth: (d) => 8 + 30 * Math.min(1, d.p), getColor: (d) => [...mix([160, 98, 30], C.ochre, Math.min(1, d.p)), 110 + Math.round(145 * Math.min(1, d.p))],
+      capRounded: true, jointRounded: true, pickable: interactive, updateTriggers: { getWidth: i, getColor: i } }),
+    new deck.PolygonLayer({ id: prefix + "zones", data: zones, getPolygon: (d) => d.z.ring, stroked: true, filled: true,
+      getFillColor: (d) => d.exposed ? [...C.ochre, 70] : d.known ? [...C.sage, 40] : [0, 0, 0, 0],
+      getLineColor: (d) => d.exposed ? C.ochre : d.known ? C.sage : C.faint, lineWidthMinPixels: 1.5,
+      getDashArray: (d) => d.known ? [0, 0] : [4, 3], pickable: interactive, updateTriggers: { getFillColor: i, getLineColor: i } }),
+    // A tracker per exposed zone: a thin ring whose size is the chance of exposure and a
+    // small dot whose colour says how soon (rust = now, ochre = later). Drawn in screen
+    // pixels, so it stays neat at every zoom and never hides the buildings around it.
+    new deck.ScatterplotLayer({ id: prefix + "tracker-halo", data: zones.filter((d) => d.exposed), getPosition: (d) => [d.c[0], d.c[1], 18],
+      radiusUnits: "pixels", getRadius: (d) => 12 + 14 * d.zw.p_peak, filled: true, stroked: true, lineWidthUnits: "pixels",
+      getLineWidth: 1, getFillColor: [...C.ochre, 26], getLineColor: [...C.ochre, 90], billboard: true,
+      updateTriggers: { getRadius: i }, transitions: reduced ? {} : { getRadius: 350 } }),
+    new deck.ScatterplotLayer({ id: prefix + "trackers", data: zones.filter((d) => d.exposed), getPosition: (d) => [d.c[0], d.c[1], 18],
+      radiusUnits: "pixels", getRadius: (d) => 6 + 7 * d.zw.p_peak, filled: false, stroked: true, lineWidthUnits: "pixels",
+      getLineWidth: 1.6, getLineColor: [...C.ochre, 230], billboard: true, pickable: interactive,
+      updateTriggers: { getRadius: i }, transitions: reduced ? {} : { getRadius: 350 } }),
+    new deck.ScatterplotLayer({ id: prefix + "columns", data: zones.filter((d) => d.exposed), getPosition: (d) => [d.c[0], d.c[1], 18],
+      radiusUnits: "pixels", getRadius: 3.8, stroked: true, lineWidthUnits: "pixels", getLineWidth: 1.2,
+      getLineColor: [17, 18, 13, 255], billboard: true, pickable: interactive,
+      getFillColor: (d) => { const soon = Math.max(0, Math.min(1, (d.zw.lo - t) / (6 * 3600))); return [...mix(C.rust, C.ochre, soon), 255]; },
+      updateTriggers: { getFillColor: i } }),
+    new deck.ScatterplotLayer({ id: prefix + "outfalls", data: D.outfalls, getPosition: (d) => d.ll, radiusUnits: "meters",
+      getRadius: (d) => 18 + 70 * cond(s, d.node_id), radiusMinPixels: 4, stroked: true, lineWidthMinPixels: 1.6,
+      getFillColor: (d) => cond(s, d.node_id) > 0.4 ? C.ochre : [16, 17, 19], getLineColor: C.sand, pickable: interactive,
+      updateTriggers: { getRadius: i, getFillColor: i }, transitions: reduced ? {} : { getRadius: 350 } }),
+    new deck.ScatterplotLayer({ id: prefix + "evidence", data: evs.map((e, k) => ({ ...e, k })).filter((e) => D.nodes[e.node_id]),
+      getPosition: (d) => D.nodes[d.node_id], radiusUnits: "meters", getRadius: (d) => d.kind === "mission" ? 22 : 16, radiusMinPixels: 4,
+      stroked: true, lineWidthMinPixels: 2, getFillColor: (d) => d.result === "positive" ? C.rust : [12, 13, 15],
+      getLineColor: (d) => d.result === "positive" ? [245, 154, 136] : C.sage, pickable: interactive, updateTriggers: { getFillColor: i } }),
+    new deck.TextLayer({ id: prefix + "outfall-labels", data: D.outfalls, getPosition: (d) => d.ll, getText: (d) => `${d.outfall_id} ${pct(cond(s, d.node_id))}`,
+      getSize: 12, getColor: [236, 236, 232], getPixelOffset: [0, -16], fontFamily: "IBM Plex Mono, monospace", fontWeight: 500,
+      outlineWidth: 3, outlineColor: [12, 13, 15, 255], fontSettings: { sdf: true }, billboard: true, updateTriggers: { getText: i } }),
+    new deck.TextLayer({ id: prefix + "places", data: PLACES, getPosition: (d) => [d[1], d[2], 60], getText: (d) => d[0], getSize: 12,
+      getColor: [200, 200, 196, 235], fontFamily: "Schibsted Grotesk, Arial, sans-serif", outlineWidth: 3, outlineColor: [12, 13, 15, 255],
+      fontSettings: { sdf: true }, billboard: true, characterSet: "auto" }),
+  ];
+  return layers;
+}
+const tipStyle = { background: "rgba(16,17,19,.96)", color: "#f3f2ee", border: "1px solid rgba(255,255,255,.12)", borderRadius: "8px", padding: "8px 10px",
+  font: "12px/1.45 'Schibsted Grotesk', Arial, sans-serif", maxWidth: "280px" };
+function tooltip(s) {
+  return ({ object, layer }) => {
+    if (!object || !layer) return null;
+    const id = layer.id.replace(/^c-/, "");
+    let html = null;
+    if (id === "outfalls") html = `<b>${object.outfall_id} · ${typeLabel[object.source_type]}</b><br>${esc(object.name || "")}<br>${pct(cond(s, object.node_id), 1)} likely to be the source, given an event<br><span style="color:#cdc7b8">synthetic location</span>`;
+    else if (id === "route") html = `${pct(Math.min(1, object.p))} chance the contamination passed along this reach`;
+    else if (id === "zones" || id === "columns" || id === "trackers") {
+      const z = object.z, zw = object.zw;
+      html = `<b>${esc(z.name)}</b><br>` + (object.exposed ? `Exposure expected ${hm(zw.lo)}–${hm(zw.hi)} (80% window)<br>Chance of exposure ${pct(zw.p_peak)}` : object.known ? "No exposure expected" : "Not enough evidence here") + `<br><span style="color:#cdc7b8">up to ${z.population_upper_bound} people</span>`;
+    } else if (id === "evidence") html = `<b>${object.result === "positive" ? "Contamination seen" : "Checked, looked normal"}</b><br>${object.kind === "mission" ? "Test strip, mission" : "Citizen report"} at ${hm(object.t)}<br>${esc(object.observer)}`;
+    return html ? { html, style: tipStyle } : null;
+  };
+}
+
+// ---------- landing
+function drawHero() {
+  const last = S[S.length - 1];
+  const el0 = $("heroMap");
+  if (!haveDeck) { el0.innerHTML = '<div class="map-fallback">The 3D map needs WebGL and could not load here.</div>'; }
+  else {
+    new deck.Deck({ parent: el0, initialViewState: { ...HOME, zoom: 13.55, pitch: 56, bearing: -28 }, controller: false,
+      effects: [lighting], layers: [...baseLayers("h-"), buildingLayer("h-"), ...beliefLayers("h-", last, null, false).filter((l) => !l.id.endsWith("labels") && !l.id.endsWith("places"))],
+      parameters: { clearColor: [11 / 255, 12 / 255, 14 / 255, 1] } });
+  }
+  const top = ranked(last)[0];
+  $("heroCap").textContent = `${D.edges.length} drain reaches · ${D.outfalls.length} outfalls · ${D.zones.length} zones · ${BM.buildings.length.toLocaleString("en-IN")} buildings`;
+  $("factTrace").textContent = `${pct(B.top3_accuracy_after_5_obs)} top-3 after five reports, against ${pct(B.baseline_top3_accuracy_after_5_obs)} by eye`;
+  $("factPulse").textContent = `${pct(B.window_coverage)} of true exposure inside the window`;
+  $("factProbe").textContent = `evidence to updated mission list in ${B.latency.p95.toFixed(1)} s (p95)`;
+  $("stCov").textContent = pct(B.window_coverage);
+  $("stG5").innerHTML = `${B.delay_matched_days.toFixed(1)}<small> vs ${B.delay_blind_days.toFixed(1)} days</small>`;
+  $("stLat").innerHTML = `${B.latency.p95.toFixed(1)}<small> s</small>`;
+  $("footNet").textContent = D.network_version;
+  $("footParams").textContent = D.params_version;
+}
+
+// ---------- console
+let cur = S.length - 1;
+let showAllZones = false;
+function stateOf(p) {
+  if (p >= 0.9) return ["Probable", "b-probable"];
+  if (p >= 0.5) return ["Suspected", "b-suspected"];
+  return ["Watching", "b-quiet"];
+}
+
+let consoleDeck = null, viewState = { ...HOME };
+function setView(patch) {
+  viewState = { ...viewState, ...patch, transitionDuration: reduced ? 0 : 450 };
+  consoleDeck.setProps({ viewState });
+}
+function setupMap() {
+  const box = $("map");
+  if (!haveDeck) { box.insertAdjacentHTML("beforeend", '<div class="map-fallback">The 3D map needs WebGL and could not load here.</div>'); return; }
+  consoleDeck = new deck.Deck({ parent: box, viewState, effects: [lighting],
+    controller: { dragRotate: true, touchRotate: true, keyboard: true, scrollZoom: { smooth: true } },
+    onViewStateChange: ({ viewState: v }) => { viewState = v; consoleDeck.setProps({ viewState }); $("tilt").setAttribute("aria-pressed", String(v.pitch > 5)); },
+    parameters: { clearColor: [11 / 255, 12 / 255, 14 / 255, 1] }, getTooltip: tooltip(S[cur]) });
+  $("zoomIn").onclick = () => setView({ zoom: Math.min(18, viewState.zoom + 0.8) });
+  $("zoomOut").onclick = () => setView({ zoom: Math.max(11.5, viewState.zoom - 0.8) });
+  $("rotL").onclick = () => setView({ bearing: viewState.bearing - 30 });
+  $("rotR").onclick = () => setView({ bearing: viewState.bearing + 30 });
+  $("tilt").onclick = () => setView({ pitch: viewState.pitch > 5 ? 0 : 52 });
+  $("resetView").onclick = () => setView({ ...HOME });
+  $("focusCorr").onclick = () => {
+    const w = corridor(S[cur]); let x = 0, y = 0, n = 0;
+    D.edges.forEach((e, k) => { if (w[k] > 0.4) e.ll.forEach(([a, b]) => { x += a; y += b; n += 1; }); });
+    if (n) setView({ longitude: x / n, latitude: y / n, zoom: 15, pitch: 55 });
+  };
+}
+function drawMap(i) {
+  if (!consoleDeck) return;
+  const s = S[i];
+  consoleDeck.setProps({ layers: [...baseLayers("c-"), buildingLayer("c-"), ...beliefLayers("c-", s, i, true)], getTooltip: tooltip(s) });
+}
+
+function drawConsole(i) {
+  cur = i;
+  const s = S[i];
+  const [label, cls] = stateOf(s.p_event);
+  $("stateBadge").innerHTML = `<span class="badge ${cls}" style="margin-left:10px;vertical-align:middle">${label}</span>`;
+  $("consoleDesc").textContent = `${D.scenario.weather === "wet" ? "Wet weather" : D.scenario.weather} (${D.scenario.rain_mm_h} mm/h). Opened by a citizen report at ${hm(S[0].ts)} on ${fmtD.format(new Date(S[0].ts))}. ${s.label}.`;
+  const r = ranked(s);
+  const top = r[0];
+  $("kEvent").textContent = pct(s.p_event);
+  $("kTop").innerHTML = `${nameOf(top)} <span class="synthetic">SYNTHETIC</span>`;
+  $("kTopS").textContent = `${shortType[outfallByNode[top].source_type]} · ${pct(cond(s, top))} given an event`;
+  const exposed = Object.values(s.zones).filter((z) => z.lo !== null && z.p_peak >= 0.05);
+  const evs = evidenceAt(i);
+  const unknown = D.zones.filter((z) => !(s.zones[z.zone_id] && s.zones[z.zone_id].lo !== null && s.zones[z.zone_id].p_peak >= 0.05) && !nearEvidence(z, evs)).length;
+  $("kZones").textContent = `${exposed.length} of ${D.zones.length}`;
+  $("kZonesS").textContent = `${unknown} with not enough evidence to say`;
+  const pos = evs.filter((e) => e.result === "positive").length;
+  $("kEv").textContent = evs.length;
+  $("kEvS").textContent = `${pos} contamination seen · ${evs.length - pos} looked normal`;
+
+  drawMap(i);
+  const sl = $("beliefSlider");
+  sl.value = i;
+  sl.setAttribute("aria-valuetext", `Showing belief at ${hm(s.ts)}, ${s.label}`);
+  $("nowLabel").textContent = `${hm(s.ts)} · ${s.label}`;
+  $("pastFlag").hidden = i === S.length - 1;
+  $("fp").textContent = s.fingerprint;
+
+  // sources
+  $("sources").innerHTML = r.slice(0, 5).map((k, n) => `
+    <div class="src ${n === 0 ? "top" : ""}">
+      <div><div class="name">${nameOf(k)}</div><div class="type">${shortType[outfallByNode[k].source_type]}</div></div>
+      <div class="bar" role="img" aria-label="${pct(cond(s, k))}"><i style="width:${(cond(s, k) * 100).toFixed(1)}%"></i></div>
+      <div class="pct">${pct(cond(s, k))}</div>
+    </div>`).join("");
+  const ex = s.explanation[0];
+  const nm = (idx) => { const e = D.evidence[idx]; return e ? `${e.kind === "mission" ? "test strip" : "report"} at ${hm(e.t)} (${e.result === "positive" ? "seen" : "normal"})` : ""; };
+  const sup = (ex.supported_by || []).filter((e) => e.evidence_index != null).slice(0, 2).map((e) => nm(e.evidence_index));
+  const rul = (ex.eliminated_rivals_by || []).filter((e) => e.evidence_index != null).slice(0, 2).map((e) => nm(e.evidence_index));
+  $("why").innerHTML = `<div><b>Supported by</b> ${sup.length ? sup.join("; ") : "the prior for this weather only"}</div>
+    <div><b>Eliminated rivals</b> ${rul.length ? rul.join("; ") : "nothing yet"}</div>
+    <div class="mono" style="font-size:11px;color:var(--faint)">computed from the model's own likelihoods, not written afterwards</div>`;
+
+  // probe
+  const pr = s.probe[0];
+  if (pr) {
+    const alts = s.probe.slice(1).map((c) => c.node_id).join(", ");
+    $("probe").innerHTML = `
+      <div class="where">Test strip at ${esc(pr.node_id)}${outfallByNode[pr.node_id] ? ` (outfall ${nameOf(pr.node_id)})` : ""}</div>
+      <div class="meta"><span>Go between ${hm(pr.window_start)} and ${hm(pr.window_end)}</span><span>about ${Math.round(pr.walk_cost_s / 60)} min walk</span></div>
+      <div class="effect">${esc(pr.expected_effect)}</div>
+      <div class="safe"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6.5l2.5 2.5L10 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>Daylight, normal flow, public access</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn btn-primary btn-sm" type="button" id="sendMission">Offer to nearby volunteers</button>${alts ? `<span class="alts" style="align-self:center">then ${esc(alts)}</span>` : ""}</div>`;
+    $("sendMission").onclick = (ev) => { ev.target.textContent = "Offered to 3 volunteers within 10 min"; ev.target.disabled = true; };
+  } else {
+    $("probe").innerHTML = `<p class="note" style="margin:0">Nothing credible is still passing any reachable point. The record is doing the work now.</p>`;
+  }
+
+  // windows
+  const t0 = new Date(S[0].ts).getTime() / 1000 - 2 * 3600, t1 = t0 + 12 * 3600;
+  const X = (t) => ((t - t0) / (t1 - t0)) * 100;
+  const now = new Date(s.ts).getTime() / 1000;
+  const isExp = (z) => { const w = s.zones[z.zone_id]; return !!(w && w.lo !== null && w.p_peak >= 0.05); };
+  const ordered = [...D.zones].sort((a, b) => (isExp(b) - isExp(a)) || ((s.zones[a.zone_id]?.lo ?? 9e12) - (s.zones[b.zone_id]?.lo ?? 9e12)));
+  const nExp = ordered.filter(isExp).length;
+  const listed = showAllZones ? ordered : ordered.filter(isExp);
+  const rows = listed.map((z) => {
+    const zw = s.zones[z.zone_id];
+    const exposedZ = zw && zw.lo !== null && zw.p_peak >= 0.05;
+    const known = nearEvidence(z, evs);
+    let body;
+    if (exposedZ) {
+      const pts = zw.t.map((t, k) => `${X(t).toFixed(2)},${(24 - 20 * zw.p[k]).toFixed(2)}`).filter((p) => { const x = +p.split(",")[0]; return x >= 0 && x <= 100; });
+      body = `<svg viewBox="0 0 100 26" preserveAspectRatio="none" aria-label="Exposure expected ${hm(zw.lo)} to ${hm(zw.hi)}">
+        <rect x="0" y="23.5" width="100" height="1" fill="rgba(255,255,255,0.099)"/>
+        <rect x="${X(zw.lo)}" y="3" width="${Math.max(0.6, X(zw.hi) - X(zw.lo))}" height="21" fill="rgba(242,163,58,.16)"/>
+        ${pts.length > 1 ? `<polyline points="${pts.join(" ")}" fill="none" stroke="#f2a33a" stroke-width="1.4" vector-effect="non-scaling-stroke"/>` : ""}
+        <line x1="${X(now)}" x2="${X(now)}" y1="0" y2="26" stroke="#f3f2ee" stroke-width="1" vector-effect="non-scaling-stroke" stroke-dasharray="2 2"/>
+      </svg>`;
+    } else {
+      body = known ? `<span style="color:var(--sage-text);font-size:12px">No exposure expected</span>`
+        : `<span style="color:var(--faint);font-size:12px;padding:2px 6px;border-radius:4px;background:repeating-linear-gradient(45deg,rgba(205,199,184,.45) 0 1.5px,transparent 1.5px 6px)">Not enough evidence here</span>`;
+    }
+    const when = exposedZ ? `${hm(zw.lo)}–${hm(zw.hi)}` : "";
+    return `<div class="wrow"><div class="zn">${esc(z.name)}<small>${when ? `<span class="mono">${when}</span> · ` : ""}up to ${z.population_upper_bound} people</small></div><div>${body}</div></div>`;
+  });
+  const axis = [0, 3, 6, 9, 12].map((h) => `<span>${hm(t0 + h * 3600)}</span>`).join("");
+  $("windows").innerHTML = (rows.length ? rows.join("") + `<div class="waxis"><div></div><div>${axis}</div></div>`
+    : `<p class="note" style="margin:0">No zone expects exposure in this belief.</p>`)
+    + `<button type="button" class="btn btn-quiet btn-sm" id="allZones" style="justify-self:start;margin-top:6px">${showAllZones ? `Show only the ${nExp} zones expecting exposure` : `Show all ${D.zones.length} zones`}</button>`;
+  $("allZones").onclick = () => { showAllZones = !showAllZones; drawConsole(cur); };
+
+  // evidence (rendered into the drawer; the slider keeps it in step)
+  $("evidenceSub").textContent = `${evs.length} pieces of evidence at ${hm(s.ts)} · ${evs.filter((e) => e.result === "positive").length} contamination seen`;
+  const expl = s.explanation[0];
+  const supSet = new Set((expl.supported_by || []).map((e) => e.evidence_index));
+  const rulSet = new Set((expl.eliminated_rivals_by || []).map((e) => e.evidence_index));
+  $("evidence").innerHTML = evs.map((e, k) => ({ e, k })).reverse().map(({ e, k }) => {
+    const pos = e.result === "positive";
+    const icon = e.kind === "mission"
+      ? `<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><rect x="4" y="4" width="10" height="10" rx="2" transform="rotate(45 9 9)" fill="${pos ? "#e5533d" : "none"}" stroke="${pos ? "#f59a88" : "#7fa37a"}" stroke-width="1.8"/></svg>`
+      : `<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="6" fill="${pos ? "#e5533d" : "none"}" stroke="${pos ? "#f59a88" : "#7fa37a"}" stroke-width="1.8"/></svg>`;
+    const kind = e.kind === "mission" ? "Test strip, mission" : "Citizen report";
+    const tag = supSet.has(k) ? `<span class="tag tag-sup">supports ${nameOf(expl.entry_id)}</span>` : rulSet.has(k) ? `<span class="tag tag-rule">rules out a rival</span>` : "";
+    return `<div class="ev" data-result="${pos ? "positive" : "negative"}" data-testid="evidence-${pos ? "positive" : "negative"}" aria-describedby="evd${k}">
+      <div>${icon}</div>
+      <div><div class="what"><b>${pos ? "Contamination seen" : "Checked, looked normal"}</b> · ${kind}</div>
+        <div class="sub" id="evd${k}">at ${esc(e.node_id)} · ${esc(e.observer)}${pos ? "" : " · a negative is evidence too"}</div>${tag}</div>
+      <div class="t">${hm(e.t)}</div></div>`;
+  }).join("") + `<div class="ev"><div><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="6" fill="none" stroke="#9a9ca0" stroke-width="1.6"/><path d="M4 14L14 4" stroke="#9a9ca0" stroke-width="1.4"/></svg></div>
+      <div><div class="what line-through">Style of a withdrawn report</div><div class="sub">A retraction is a new event: the report stays visible, struck through, and the belief is recomputed without it.</div></div><div class="t">legend</div></div>`;
+}
+
+function setupSlider() {
+  const sl = $("beliefSlider");
+  sl.max = S.length - 1;
+  $("ticks").style.gridTemplateColumns = `repeat(${S.length}, minmax(0,1fr))`;
+  $("ticks").innerHTML = S.map((s) => `<span>${hm(s.ts)}</span>`).join("");
+  sl.addEventListener("input", () => drawConsole(+sl.value));
+  $("latestBtn").onclick = () => drawConsole(S.length - 1);
+  let timer = null;
+  $("playBtn").onclick = () => {
+    if (timer) { clearInterval(timer); timer = null; $("playBtn").textContent = "Play"; return; }
+    let k = 0; drawConsole(0); $("playBtn").textContent = "Pause";
+    timer = setInterval(() => {
+      k += 1;
+      if (k >= S.length) { clearInterval(timer); timer = null; $("playBtn").textContent = "Play"; return; }
+      drawConsole(k);
+    }, reduced ? 2200 : 1300);
+  };
+}
+
+// ---------- evidence drawer
+let evFilter = "all";
+let lastFocus = null;
+function applyEvidenceFilter() {
+  document.querySelectorAll("#evidence .ev[data-result]").forEach((row) => {
+    row.hidden = evFilter !== "all" && row.dataset.result !== evFilter;
+  });
+  document.querySelectorAll(".drawer-filter button").forEach((b) => b.setAttribute("aria-checked", String(b.dataset.filter === evFilter)));
+}
+function openEvidence() {
+  const d = $("evidenceDrawer");
+  lastFocus = document.activeElement;
+  $("evidenceBackdrop").hidden = false;
+  d.hidden = false;
+  d.classList.add("closing");
+  requestAnimationFrame(() => d.classList.remove("closing"));
+  $("openEvidence").setAttribute("aria-expanded", "true");
+  document.body.style.overflow = "hidden";
+  $("closeEvidence").focus();
+}
+function closeEvidence() {
+  const d = $("evidenceDrawer");
+  if (d.hidden) return;
+  d.classList.add("closing");
+  const done = () => { d.hidden = true; $("evidenceBackdrop").hidden = true; d.classList.remove("closing"); };
+  if (reduced) done(); else setTimeout(done, 200);
+  $("openEvidence").setAttribute("aria-expanded", "false");
+  document.body.style.overflow = "";
+  (lastFocus || $("openEvidence")).focus();
+}
+function setupEvidenceDrawer() {
+  $("openEvidence").addEventListener("click", openEvidence);
+  $("closeEvidence").addEventListener("click", closeEvidence);
+  $("evidenceBackdrop").addEventListener("click", closeEvidence);
+  document.querySelectorAll(".drawer-filter button").forEach((b) => b.addEventListener("click", () => { evFilter = b.dataset.filter; applyEvidenceFilter(); }));
+  document.addEventListener("keydown", (e) => {
+    const d = $("evidenceDrawer");
+    if (d.hidden) return;
+    if (e.key === "Escape") { e.preventDefault(); closeEvidence(); return; }
+    if (e.key !== "Tab") return;
+    const f = [...d.querySelectorAll("button, [href], [tabindex]:not([tabindex='-1'])")].filter((x) => !x.hidden && x.offsetParent !== null);
+    if (!f.length) return;
+    const first = f[0], last = f[f.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  });
+  window.addEventListener("hashchange", closeEvidence);
+}
+
+// ---------- replay
+function drawReplay() {
+  const svg = $("replayChart");
+  const W = 640, H = 300, L = 44, R = 16, T = 14, Bt = 34;
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.innerHTML = "";
+  const X = (k) => L + (k / (S.length - 1)) * (W - L - R);
+  const Y = (p) => T + (1 - p) * (H - T - Bt);
+  [0, 0.25, 0.5, 0.75, 1].forEach((p) => {
+    el("line", { x1: L, x2: W - R, y1: Y(p), y2: Y(p), stroke: "rgba(255,255,255,0.055)" }, svg);
+    el("text", { x: L - 8, y: Y(p) + 4, "text-anchor": "end" }, svg).textContent = pct(p);
+  });
+  S.forEach((s, k) => { el("text", { x: X(k), y: H - 12, "text-anchor": "middle" }, svg).textContent = hm(s.ts); });
+  const shown = [...new Set(S.flatMap((s) => ranked(s).slice(0, 2)))].slice(0, 4);
+  const colours = ["#f2a33a", "#4f8fb5", "#c3c3bf", "#7fa37a"];
+  shown.forEach((k, c) => {
+    const pts = S.map((s, i) => `${X(i)},${Y(cond(s, k))}`).join(" ");
+    el("polyline", { points: pts, fill: "none", stroke: colours[c], "stroke-width": c === 0 ? 2.6 : 1.8 }, svg);
+    S.forEach((s, i) => el("circle", { cx: X(i), cy: Y(cond(s, k)), r: i === S.length - 1 ? 4 : 2.6, fill: colours[c] }, svg));
+  });
+  const ev = S.map((s, i) => `${X(i)},${Y(s.p_event)}`).join(" ");
+  el("polyline", { points: ev, fill: "none", stroke: "#f3f2ee", "stroke-width": 1.4, "stroke-dasharray": "4 4" }, svg);
+  $("replayLegend").innerHTML = shown.map((k, c) => `<span><i class="sw-line" style="background:${colours[c]}"></i>${nameOf(k)} (${shortType[outfallByNode[k].source_type]})</span>`).join("")
+    + `<span><i class="sw-line" style="background:repeating-linear-gradient(90deg,#f4f1e8 0 4px,transparent 4px 8px)"></i>Something is happening</span>`;
+  $("replayRows").innerHTML = S.map((s, i) => `<tr data-i="${i}" tabindex="0"><td class="mono">${hm(s.ts)}</td><td>${esc(s.label)}</td>
+    <td class="num">${pct(s.p_event)}</td><td>${nameOf(ranked(s)[0])} <span class="num" style="color:var(--faint)">${pct(cond(s, ranked(s)[0]))}</span></td>
+    <td class="mono" style="color:var(--faint);font-size:11px">${s.fingerprint.slice(0, 19)}…</td></tr>`).join("");
+  $("replayRows").querySelectorAll("tr").forEach((tr) => {
+    const open = () => { location.hash = "#/console"; drawConsole(+tr.dataset.i); };
+    tr.addEventListener("click", open);
+    tr.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); } });
+  });
+}
+
+// ---------- missions
+function drawMissions() {
+  const offerSnap = S[3], pr = offerSnap.probe[0];
+  const before = S[3], after = S[4];
+  const k = ranked(after)[0];
+  const done = D.evidence[before.evidence_count];
+  const phone = (inner) => `<div class="phone"><div class="screen"><div class="status"><span>${hm(pr.window_start)}</span><span>Upstream</span></div>${inner}</div></div>`;
+  $("phones").innerHTML = [
+    phone(`<div class="step">New mission · near you</div>
+      <h3>Read a test strip at ${esc(pr.node_id)}</h3>
+      <div class="box"><div class="k">Where</div><div>${outfallByNode[pr.node_id] ? `Outfall ${nameOf(pr.node_id)} (location illustrative)` : `Stream point ${esc(pr.node_id)}`}, about ${Math.round(pr.walk_cost_s / 60)} min walk</div></div>
+      <div class="box"><div class="k">When</div><div class="mono">${hm(pr.window_start)}–${hm(pr.window_end)}</div></div>
+      <div class="box"><div class="k">Why it matters</div><div>${esc(pr.expected_effect)}</div></div>
+      <div class="safe" style="color:var(--sage-text);font-size:12px">Daylight · normal flow · public path. Do not step into the drain.</div>
+      <button class="btn btn-primary big" type="button">Accept mission</button>`),
+    phone(`<div class="step">Record the result</div>
+      <h3>What did the strip show?</h3>
+      <div class="choice" role="radiogroup" aria-label="Test strip result"><div class="on" role="radio" aria-checked="true">Contamination</div><div role="radio" aria-checked="false">Looked normal</div></div>
+      <div class="box"><div class="k">Checked at</div><div class="mono">${hm(done.t)}, kept exactly as recorded</div></div>
+      <div class="offline" role="status"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M1 5a9 9 0 0112 0M3.5 7.5a5.5 5.5 0 017 0M6 10a2 2 0 012 0" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M2 2l10 10" stroke="currentColor" stroke-width="1.4"/></svg>No signal. Saved on this phone; it will send when you are back online.</div>
+      <button class="btn btn-quiet big" type="button" disabled>Waiting for signal</button>`),
+    phone(`<div class="step">Mission complete</div>
+      <h3>Your check changed the picture</h3>
+      <div class="box"><div class="k">${nameOf(k)} as the source</div><div class="result-big num">${pct(cond(before, k))} → ${pct(cond(after, k))}</div></div>
+      <div class="box"><div class="k">Something is happening</div><div class="num" style="font-weight:600">${pct(before.p_event)} → ${pct(after.p_event)}</div></div>
+      <p class="note" style="margin:0">Your reading moved the likeliest source from ${nameOf(ranked(before)[0])} to ${nameOf(k)}. An officer confirms before anything is acted on.</p>
+      <button class="btn btn-quiet big" type="button">See nearby missions</button>`),
+  ].join("");
+}
+
+// ---------- health
+const GI_TESTS = "norovirus, Campylobacter, Shiga-toxin E. coli, Cryptosporidium and Giardia";
+const pathLabel = { recreation: "recreation", animal_contact: "animal contact", floodwater: "floodwater", irrigation: "irrigation" };
+let selectedZone = null;
+let healthShowAll = false;
+let healthReady = false;
+function zoneCurve(zw) {
+  const W = 560, H = 120, L = 6, R = 6, T = 8, Bt = 22;
+  const t0 = zw.t[0], t1 = zw.t[zw.t.length - 1];
+  const X = (t) => L + ((t - t0) / (t1 - t0)) * (W - L - R);
+  const Y = (p) => T + (1 - p) * (H - T - Bt);
+  const now = new Date(S[S.length - 1].ts).getTime() / 1000;
+  const area = `M${X(zw.t[0])},${Y(0)} ` + zw.t.map((t, k) => `L${X(t).toFixed(1)},${Y(zw.p[k]).toFixed(1)}`).join(" ") + ` L${X(t1)},${Y(0)} Z`;
+  const ticks = [0, 0.25, 0.5, 0.75, 1].map((f) => t0 + f * (t1 - t0));
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Chance of exposure over time, 80% window ${hm(zw.lo)} to ${hm(zw.hi)}" style="width:100%;height:auto;display:block">
+    <rect x="${X(zw.lo)}" y="${T}" width="${Math.max(1, X(zw.hi) - X(zw.lo))}" height="${H - T - Bt}" fill="rgba(242,163,58,.13)"/>
+    <path d="${area}" fill="rgba(242,163,58,.28)" stroke="#f2a33a" stroke-width="1.6"/>
+    <line x1="${X(now)}" x2="${X(now)}" y1="${T}" y2="${H - Bt}" stroke="#f3f2ee" stroke-dasharray="3 3"/>
+    <text x="${X(now) + 4}" y="${T + 10}" fill="#c3c3bf" font-family="IBM Plex Mono" font-size="10">latest belief</text>
+    ${ticks.map((t) => `<text x="${X(t)}" y="${H - 6}" text-anchor="middle" fill="#9a9ca0" font-family="IBM Plex Mono" font-size="10">${hm(t)}</text>`).join("")}
+  </svg>`;
+}
+function drawZoneDetail() {
+  const s = S[S.length - 1];
+  const z = zoneById[selectedZone], zw = s.zones[selectedZone];
+  const exposed = zw && zw.lo !== null && zw.p_peak >= 0.05;
+  const windowEnd = new Date(S[0].ts).getTime() + 16 * 86400000;
+  const daysLeft = Math.max(0, Math.round((windowEnd - new Date(S[S.length - 1].ts).getTime()) / 86400000));
+  $("zdetail").innerHTML = exposed ? `
+    <div><div class="eyebrow">Selected zone</div><h3>${esc(z.name)}</h3></div>
+    <div class="chips">${zw.pathways.map((p) => `<span class="chip2">${pathLabel[p] || p}</span>`).join("")}<span class="chip2">up to ${z.population_upper_bound} people</span></div>
+    <div class="facts">
+      <div class="fact2"><div class="k">80% window</div><div class="v mono">${hm(zw.lo)}–${hm(zw.hi)}</div></div>
+      <div class="fact2"><div class="k">Chance of exposure</div><div class="v num">${pct(zw.p_peak)}</div><div class="meter"><i style="width:${(zw.p_peak * 100).toFixed(0)}%"></i></div></div>
+      <div class="fact2"><div class="k">Clinically relevant</div><div class="v num">${daysLeft} days left</div><div class="meter"><i style="width:${(100 * daysLeft / 16).toFixed(0)}%"></i></div></div>
+    </div>
+    ${zoneCurve(zw)}
+    <p class="consider">If someone who uses this spot presents with <b>acute gastroenteritis</b> in the next ${daysLeft} days, the incubation periods involved point to testing for <b>${GI_TESTS}</b>. Routine panels often miss these.</p>`
+    : `<div><div class="eyebrow">Selected zone</div><h3>${esc(z.name)}</h3></div><p class="note" style="margin:0">No exposure is expected at this zone in the current belief.</p>`;
+  document.querySelectorAll(".zbtn").forEach((b) => b.setAttribute("aria-checked", String(b.dataset.zone === selectedZone)));
+}
+function drawClinical(day) {
+  const Cd = D.clinical;
+  const svg = $("clinChart");
+  const W = 640, H = 230, L = 34, R = 10, T = 10, Bt = 30;
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.innerHTML = "";
+  const n = Cd.counts.length;
+  const exI = Cd.days.indexOf(Cd.exposure_day);
+  const lastI = exI + day;
+  const maxV = Math.max(...Cd.counts.filter((v) => v != null), ...Cd.expected.map((v, i) => v + (Cd.shape[i] || 0))) * 1.1;
+  const bw2 = (W - L - R) / n;
+  const X = (i) => L + i * bw2;
+  const Y = (v) => T + (1 - v / maxV) * (H - T - Bt);
+  [0, 10, 20, 30].filter((v) => v < maxV).forEach((v) => {
+    el("line", { x1: L, x2: W - R, y1: Y(v), y2: Y(v), stroke: "rgba(255,255,255,0.055)" }, svg);
+    el("text", { x: L - 6, y: Y(v) + 4, "text-anchor": "end" }, svg).textContent = v;
+  });
+  el("rect", { x: X(exI), y: T, width: bw2, height: H - T - Bt, fill: "rgba(229,83,61,.12)" }, svg);
+  el("text", { x: X(exI) + bw2 / 2, y: T + 12, "text-anchor": "middle", fill: "#e5533d" }, svg).textContent = "exposure";
+  Cd.counts.forEach((v, i) => {
+    if (i > lastI) { el("rect", { x: X(i) + 2, y: Y(0) - 2, width: bw2 - 4, height: 2, fill: "rgba(255,255,255,0.055)" }, svg); return; }
+    if (v == null) el("rect", { x: X(i) + 2, y: Y(4.5), width: bw2 - 4, height: Y(0) - Y(4.5), fill: "url(#hatch)", opacity: 0.8 }, svg);
+    else el("rect", { x: X(i) + 2, y: Y(v), width: bw2 - 4, height: Y(0) - Y(v), fill: i === lastI ? "rgba(242,163,58,.35)" : "rgba(255,255,255,0.088)", stroke: "rgba(255,255,255,0.099)" }, svg);
+  });
+  el("polyline", { points: Cd.expected.map((v, i) => `${X(i) + bw2 / 2},${Y(v)}`).join(" "), fill: "none", stroke: "#c3c3bf", "stroke-width": 1.6 }, svg);
+  el("polyline", { points: Cd.expected.map((v, i) => `${X(i) + bw2 / 2},${Y(v + (Cd.shape[i] || 0))}`).join(" "), fill: "none", stroke: "#f2a33a", "stroke-width": 2.2 }, svg);
+  el("line", { x1: X(lastI) + bw2, x2: X(lastI) + bw2, y1: T, y2: H - Bt, stroke: "#f3f2ee", "stroke-dasharray": "3 3" }, svg);
+  Cd.days.forEach((d, i) => { if (i % 5 === 0) el("text", { x: X(i) + bw2 / 2, y: H - 10, "text-anchor": "middle" }, svg).textContent = fmtD.format(new Date(d + "T12:00:00Z")); });
+  const p = Cd.p_by_day[day];
+  const hit = p < 0.01;
+  const firstHit = Cd.p_by_day.findIndex((q) => q < 0.01);
+  $("clinStatus").className = "status-pill" + (hit ? " hit" : "");
+  $("clinStatus").textContent = hit ? `Excess matches EE-7C31, p = ${p.toFixed(3)}` : `Day ${day}: no matching excess yet, p = ${p.toFixed(3)}`;
+  $("clinSub").textContent = hit ? `Crossed 1% on day ${firstHit}. A reason to investigate, not a conclusion.` : "The test looks for the predicted curve shape, not for any bump.";
+  $("clinArrow").innerHTML = hit ? "only this<br>crosses →" : "nothing<br>yet";
+  $("clinWire").className = "wire" + (hit ? " sent" : "");
+  $("clinWire").textContent = hit ? `{episode_id: "EE-7C31", area_code, syndrome, method, p_value: ${p.toFixed(3)}, effect_size, n_days: ${day + 1}, computed_at}` : "Nothing is sent until the test finds a matching excess.";
+}
+const CDS_CONDITIONS = [
+  ["area", "Patient's coarse area overlaps an exposed zone", "Only the area is read, never the street address"],
+  ["window", "Visit falls inside the clinical relevance window", "About 16 days from exposure"],
+  ["reason", "Reason for visit is a matching syndrome", "Acute gastroenteritis, or fever after floodwater contact"],
+];
+const cdsState = { area: true, window: true, reason: true };
+function drawCds() {
+  $("cdsSwitches").innerHTML = CDS_CONDITIONS.map(([k, label, hint]) =>
+    `<label class="switch" for="cds-${k}"><input type="checkbox" id="cds-${k}" ${cdsState[k] ? "checked" : ""}><span><b>${label}</b><small>${hint}</small></span></label>`).join("");
+  CDS_CONDITIONS.forEach(([k]) => { $(`cds-${k}`).onchange = (e) => { cdsState[k] = e.target.checked; drawEhr(); }; });
+  drawEhr();
+}
+function drawEhr() {
+  $("ehrTime").textContent = `${hm(new Date(S[S.length - 1].ts).getTime() / 1000 + 2 * 86400)} · +2 days`;
+  const failing = CDS_CONDITIONS.filter(([k]) => !cdsState[k]);
+  $("ehrBody").innerHTML = failing.length === 0
+    ? `<div class="card-cds"><b>Recent drain contamination near this patient's area</b>
+        <p>A probable sewage contamination episode on the Kushak Nallah affected zones near this patient's area in the last few days. For acute gastroenteritis, consider stool testing for ${GI_TESTS}.</p>
+        <small>Environmental context, not a diagnosis. Source: Upstream episode EE-7C31 (FHIR RiskAssessment).</small></div>`
+    : `<p class="none">No card. ${failing.map(([, l]) => l.toLowerCase()).join("; ")}: not met.</p><p class="none">The card only appears when all three hold, so clinicians are not interrupted by context that does not apply.</p>`;
+}
+function drawHealth() {
+  const s = S[S.length - 1];
+  const exposedIds = D.zones.filter((z) => s.zones[z.zone_id] && s.zones[z.zone_id].lo !== null && s.zones[z.zone_id].p_peak >= 0.05).map((z) => z.zone_id);
+  const order = [...D.zones].sort((a, b) => (exposedIds.includes(b.zone_id) - exposedIds.includes(a.zone_id)) || ((s.zones[a.zone_id]?.lo ?? 9e12) - (s.zones[b.zone_id]?.lo ?? 9e12)));
+  $("healthAside").textContent = `${exposedIds.length} of ${D.zones.length} expect exposure`;
+  const picked = healthShowAll ? order : order.filter((z) => exposedIds.includes(z.zone_id));
+  $("zpick").innerHTML = picked.map((z) => {
+    const w = s.zones[z.zone_id]; const ex = exposedIds.includes(z.zone_id);
+    return `<button type="button" role="radio" class="zbtn ${ex ? "" : "quiet"}" data-zone="${z.zone_id}" aria-checked="false">
+      <span class="n">${esc(z.name)}</span><span class="w">${ex ? `${hm(w.lo)}–${hm(w.hi)}<small>${pct(w.p_peak)} chance</small>` : "none expected"}</span>
+      <span class="d">${(ex ? w.pathways : z.pathways).map((p) => pathLabel[p] || p).join(", ")} · up to ${z.population_upper_bound}</span></button>`;
+  }).join("") + `<button type="button" class="btn btn-quiet btn-sm" id="healthAll" style="justify-self:start">${healthShowAll ? "Show only zones expecting exposure" : `Show all ${D.zones.length} zones`}</button>`;
+  $("healthAll").onclick = () => { healthShowAll = !healthShowAll; const keep = selectedZone; drawHealth(); selectedZone = keep; drawZoneDetail(); };
+  document.querySelectorAll(".zbtn").forEach((b) => b.addEventListener("click", () => { selectedZone = b.dataset.zone; drawZoneDetail(); }));
+  selectedZone = D.clinical.zone_id in zoneById && exposedIds.includes(D.clinical.zone_id) ? D.clinical.zone_id : exposedIds[0] || D.zones[0].zone_id;
+  drawZoneDetail();
+  $("clinZone").textContent = zoneById[D.clinical.zone_id] ? zoneById[D.clinical.zone_id].name : D.clinical.zone_id;
+  if (healthReady) return;
+  healthReady = true;
+  const sl = $("daySlider");
+  sl.max = D.clinical.p_by_day.length - 1; sl.value = sl.max;
+  sl.addEventListener("input", () => { sl.setAttribute("aria-valuetext", `Day ${sl.value} after exposure`); drawClinical(+sl.value); });
+  let t = null;
+  $("dayPlay").onclick = () => {
+    if (t) { clearInterval(t); t = null; $("dayPlay").textContent = "Replay the days"; return; }
+    let d = 0; sl.value = 0; drawClinical(0); $("dayPlay").textContent = "Pause";
+    t = setInterval(() => { d += 1; if (d > +sl.max) { clearInterval(t); t = null; $("dayPlay").textContent = "Replay the days"; return; } sl.value = d; drawClinical(d); }, reduced ? 1400 : 650);
+  };
+  drawClinical(+sl.value);
+  drawCds();
+}
+
+// ---------- benchmarks
+function drawBench() {
+  const g = [
+    ["G1", "Source in the top 3 after five reports", `nearest-upstream heuristic ${pct(B.baseline_top3_accuracy_after_5_obs)}`, pct(B.top3_accuracy_after_5_obs), "target 80%", B.top3_accuracy_after_5_obs >= 0.8 ? "met" : B.top3_accuracy_after_5_obs >= 0.75 ? "near" : "miss"],
+    ["G2", "Share of true exposure inside the 80% window", `${B.window_zones} zones scored`, pct(B.window_coverage), "target 75–85%", B.window_coverage >= 0.75 && B.window_coverage <= 0.85 ? "met" : "near"],
+    ["G3", "Fewer samples than the best baseline", `${B.g3_scenarios} incidents where missions were safe`, (B.sample_reduction_vs_best_baseline * 100).toFixed(1) + "%", "target 30% fewer", B.sample_reduction_vs_best_baseline >= 0.3 ? "met" : B.sample_reduction_vs_best_baseline > 0 ? "near" : "miss"],
+    ["—", "Calibration error of stated probabilities", "states chosen from what the system could see", B.calibration_error.toFixed(3), "target ≤ 0.05", B.calibration_error <= 0.0505 ? "met" : B.calibration_error <= 0.07 ? "near" : "miss"],
+    ["G5", "Days from exposure to a clinical signal", `blind cluster scan ${B.delay_blind_days.toFixed(1)} days`, B.delay_matched_days.toFixed(1) + " d", "shorter than the scan", "met"],
+    ["—", "False episodes when nothing happened", `${B.null_days} simulated quiet days`, B.false_suspected_per_catchment_month.toFixed(1), "per catchment-month", "met"],
+    ["NFR-1", "Evidence to updated belief, p95", "TRACE, PULSE and PROBE together", B.latency.p95.toFixed(2) + " s", "target under 5 s", "met"],
+  ];
+  const word = { met: "met", near: "just short", miss: "not met" };
+  $("goals").innerHTML = g.map(([id, l, sub, v, t, st]) => `<div class="goal"><div class="g">${id}</div><div class="l">${l}<small>${sub}</small></div>
+    <div class="r"><span class="${st}">${v}</span><small>${t} · <span class="${st}">${word[st]}</span></small></div></div>`).join("");
+
+  const acc = $("accChart");
+  const W = 560, H = 220, L = 40, R = 14, T = 12, Bt = 30;
+  acc.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  const ns = Object.keys(B.accuracy_by_n_obs).map(Number);
+  const X = (k) => L + (k / (ns.length - 1)) * (W - L - R);
+  const Y = (p) => T + (1 - p) * (H - T - Bt);
+  [0, 0.5, 0.8, 1].forEach((p) => {
+    el("line", { x1: L, x2: W - R, y1: Y(p), y2: Y(p), stroke: p === 0.8 ? "rgba(255,255,255,0.193)" : "rgba(255,255,255,0.055)", "stroke-dasharray": p === 0.8 ? "4 4" : "" }, acc);
+    el("text", { x: L - 6, y: Y(p) + 4, "text-anchor": "end" }, acc).textContent = pct(p);
+  });
+  el("text", { x: W - R, y: Y(0.8) - 6, "text-anchor": "end" }, acc).textContent = "target";
+  ns.forEach((n, k) => { el("text", { x: X(k), y: H - 10, "text-anchor": "middle" }, acc).textContent = `${n} report${n > 1 ? "s" : ""}`; });
+  [["top3", "#f2a33a"], ["baseline_top3", "#4f8fb5"]].forEach(([key, c]) => {
+    el("polyline", { points: ns.map((n, k) => `${X(k)},${Y(B.accuracy_by_n_obs[n][key])}`).join(" "), fill: "none", stroke: c, "stroke-width": 2.2 }, acc);
+    ns.forEach((n, k) => el("circle", { cx: X(k), cy: Y(B.accuracy_by_n_obs[n][key]), r: 3, fill: c }, acc));
+  });
+
+  const g3 = $("g3Chart");
+  const strategies = [["upstream", "Mission planner"], ["nearest_site", "Nearest site"], ["heuristic", "Officer heuristic"], ["fixed_schedule", "Fixed schedule"], ["random", "Random upstream"]];
+  const H3 = 30 * strategies.length + 30, L3 = 120;
+  g3.setAttribute("viewBox", `0 0 ${W} ${H3}`);
+  const X3 = (p) => L3 + p * (W - L3 - 60) / 0.5;
+  [0, 0.1, 0.2, 0.3, 0.4, 0.5].forEach((p) => {
+    el("line", { x1: X3(p), x2: X3(p), y1: 6, y2: H3 - 22, stroke: "rgba(255,255,255,0.055)" }, g3);
+    el("text", { x: X3(p), y: H3 - 8, "text-anchor": "middle" }, g3).textContent = pct(p);
+  });
+  strategies.forEach(([k, label], i) => {
+    const v = B.p_true_source_after_samples[k];
+    const y = 18 + i * 30;
+    el("text", { x: L3 - 10, y: y + 4, "text-anchor": "end", fill: k === "upstream" ? "#f7bd6a" : "#c3c3bf" }, g3).textContent = label;
+    el("line", { x1: X3(v["0"]), x2: X3(v["10"]), y1: y, y2: y, stroke: "rgba(255,255,255,0.099)", "stroke-width": 6, "stroke-linecap": "round" }, g3);
+    [["0", 3, "#9a9ca0"], ["5", 4, k === "upstream" ? "#f2a33a" : "#4f8fb5"], ["10", 5.5, k === "upstream" ? "#f2a33a" : "#4f8fb5"]].forEach(([s, r, c]) => el("circle", { cx: X3(v[s]), cy: y, r, fill: c }, g3));
+    el("text", { x: X3(v["10"]) + 10, y: y + 4, fill: k === "upstream" ? "#f7bd6a" : "#c3c3bf" }, g3).textContent = pct(v["10"]);
+  });
+}
+
+// ---------- routing
+const views = ["console", "replay", "missions", "health", "benchmarks"];
+function route() {
+  const r = (location.hash.replace(/^#\/?/, "") || "").split("?")[0];
+  const inApp = views.includes(r);
+  $("landing").hidden = inApp;
+  $("app").hidden = !inApp;
+  document.querySelectorAll("[data-view]").forEach((v) => { v.hidden = v.dataset.view !== r; });
+  document.querySelectorAll(".nav-item[data-route]").forEach((a) => {
+    if (a.dataset.route === r) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
+  });
+  if (inApp) window.scrollTo(0, 0);
+  if (r === "console" && consoleDeck) requestAnimationFrame(() => consoleDeck.redraw(true));
+}
+
+drawHero();
+setupMap();
+setupEvidenceDrawer();
+setupSlider();
+drawConsole(S.length - 1);
+drawReplay();
+drawMissions();
+drawHealth();
+drawBench();
+window.addEventListener("hashchange", route);
+route();
+})();
+</script>

@@ -1,46 +1,18 @@
 {
   "type": "FeatureCollection",
-  "name": "coimbra-ribeira-zone-overrides",
+  "name": "delhi-barapullah-zone-overrides",
   "crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
-  "_comment": "Receptor zones added by hand on top of what OSM leisure/landuse tags give. Use this for places people actually reach the water that carry no useful OSM tag - an informal access point, a ford, a stretch of bank where dogs swim. node_id may be left out; the compiler snaps the polygon centroid to the nearest stream node. population_upper_bound is an upper bound, never a count of identified people (PRD 14.2).",
+  "_comment": "Receptor zones added by hand on top of what OSM leisure/landuse tags give. Use this for places people actually reach the water that carry no useful OSM tag - an informal crossing, a bank where children play, a stretch where the drain is used to wash animals. node_id may be left out; the compiler snaps the polygon centroid to the nearest stream node. population_upper_bound is an upper bound, never a count of identified people (PRD 14.2).",
   "features": [
-    {
-      "type": "Feature",
-      "properties": {
-        "zone_id": "ZONE_OVR_001",
-        "name": "Informal bank access, lower Coselhas",
-        "pathways": ["recreation", "animal_contact"],
-        "population_upper_bound": 150
-      },
-      "geometry": {
-        "type": "Polygon",
-        "coordinates": [[
-          [-8.43130, 40.22080],
-          [-8.42980, 40.22080],
-          [-8.42980, 40.22175],
-          [-8.43130, 40.22175],
-          [-8.43130, 40.22080]
-        ]]
-      }
-    },
-    {
-      "type": "Feature",
-      "properties": {
-        "zone_id": "ZONE_OVR_002",
-        "name": "Allotment water draw, mid Coselhas",
-        "pathways": ["irrigation"],
-        "population_upper_bound": 60
-      },
-      "geometry": {
-        "type": "Polygon",
-        "coordinates": [[
-          [-8.42060, 40.22360],
-          [-8.41860, 40.22360],
-          [-8.41860, 40.22460],
-          [-8.42060, 40.22460],
-          [-8.42060, 40.22360]
-        ]]
-      }
-    }
+    { "type": "Feature",
+      "properties": { "zone_id": "ZONE_OVR_001", "name": "Informal bank access, Barapullah at Sarai Kale Khan",
+                      "pathways": ["recreation", "animal_contact"], "population_upper_bound": 400 },
+      "geometry": { "type": "Polygon", "coordinates": [[
+        [77.2570, 28.5825], [77.2600, 28.5825], [77.2600, 28.5845], [77.2570, 28.5845], [77.2570, 28.5825]]] } },
+    { "type": "Feature",
+      "properties": { "zone_id": "ZONE_OVR_002", "name": "Nallah-side footpath, Lodhi Colony",
+                      "pathways": ["recreation"], "population_upper_bound": 250 },
+      "geometry": { "type": "Polygon", "coordinates": [[
+        [77.2170, 28.5748], [77.2195, 28.5748], [77.2195, 28.5764], [77.2170, 28.5764], [77.2170, 28.5748]]] } }
   ]
 }

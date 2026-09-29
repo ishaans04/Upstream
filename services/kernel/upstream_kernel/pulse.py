@@ -16,7 +16,7 @@ import jax.numpy as jnp
 import numpy as np
 from upstream_shared.codes import ExposurePathway
 
-from .model.hypotheses import KIND_DIFFUSE, KIND_NONE
+from .model.hypotheses import KIND_DIFFUSE, KIND_POINT
 from .physics.params import FLOW_CONDITIONS
 from .physics.transport import concentration
 
@@ -40,26 +40,42 @@ def pulse(post, net, tables, params, *, forward_hours: int = 12, step_s: int = 3
                        dtype=np.float64)
     storm = FLOW_CONDITIONS[f] == "storm"
 
-    t0 = jnp.asarray(np.nan_to_num(g.t0))
-    duration = jnp.asarray(g.duration_s)
-    mass = jnp.asarray(g.mass)
+    t0 = np.nan_to_num(g.t0)
     t_obs = jnp.asarray(t_grid).reshape(-1, 1)          # (T, 1) broadcasts against (H,)
-    is_diffuse = g.kind == KIND_DIFFUSE
-    is_none = g.kind == KIND_NONE
+    is_point = g.kind == KIND_POINT
+    # Diffuse runoff is everywhere at a fixed level and "nothing happened" is nowhere,
+    # so neither needs the transport model: together they add a constant.
+    background = float(p[g.kind == KIND_DIFFUSE].sum()) \
+        if DIFFUSE_ZONE_C > EXPOSURE_THRESHOLD_C else 0.0
+
+    # Zones share stream nodes (a playground inside a park snaps to the park's node),
+    # and a point hypothesis whose entry cannot reach a node predicts zero there. So the
+    # curve is computed once per node, over only the hypotheses that can reach it. The
+    # result is the same as evaluating every hypothesis for every zone; on a network
+    # with 83 zones on 61 nodes, 26 of them out of every outfall's reach, it is several
+    # times faster, which is the difference between meeting NFR-1 and not.
+    by_node: dict[int, np.ndarray] = {}
+
+    def exposure_at(node: int) -> np.ndarray:
+        if node not in by_node:
+            cols = np.flatnonzero(is_point & np.asarray(tables.reachable[f, k, node], dtype=bool))
+            pe = np.full(len(t_grid), background)
+            if len(cols):
+                kc = k[cols]
+                c = np.asarray(concentration(
+                    jnp.asarray(tables.tau[f, kc, node]),
+                    jnp.asarray(tables.sigma[f, kc, node]),
+                    jnp.asarray(tables.dilution[f, kc, node]),
+                    jnp.asarray(tables.reachable[f, kc, node]),
+                    t0=jnp.asarray(t0[cols]), duration_s=jnp.asarray(g.duration_s[cols]),
+                    mass=jnp.asarray(g.mass[cols]), t_obs=t_obs, decay_per_s=decay))  # (T, Hc)
+                pe = pe + (c > EXPOSURE_THRESHOLD_C) @ p[cols]
+            by_node[node] = pe
+        return by_node[node]
 
     out: dict[str, dict] = {}
     for z, zone_id in enumerate(net.zone_ids):
-        node = int(net.zone_node_idx[z])
-        c = np.asarray(concentration(
-            jnp.asarray(tables.tau[f, k, node]),
-            jnp.asarray(tables.sigma[f, k, node]),
-            jnp.asarray(tables.dilution[f, k, node]),
-            jnp.asarray(tables.reachable[f, k, node]),
-            t0=t0, duration_s=duration, mass=mass,
-            t_obs=t_obs, decay_per_s=decay))            # (T, H)
-        c = np.where(is_diffuse, DIFFUSE_ZONE_C, c)
-        c = np.where(is_none, 0.0, c)
-        p_exposed = (c > EXPOSURE_THRESHOLD_C) @ p      # (T,)
+        p_exposed = exposure_at(int(net.zone_node_idx[z]))     # (T,)
 
         lo, hi = _credible_window(t_grid, p_exposed, q=0.80)
         pathways = list(net.zone_pathways[z])

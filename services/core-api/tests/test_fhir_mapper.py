@@ -47,7 +47,7 @@ def _event(**payload) -> StoredEvent:
         seq=1,
         event_id=uuid.UUID("11111111-2222-3333-4444-555555555555"),
         stream="live",
-        catchment_id="coimbra-ribeira",
+        catchment_id="delhi-barapullah",
         event_type=EventType.EVIDENCE_RECORDED,
         schema_version=1,
         event_time=event_time,
