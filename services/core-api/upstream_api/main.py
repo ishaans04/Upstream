@@ -11,6 +11,8 @@ from .api.episodes import router as episodes_router
 from .api.missions import router as missions_router
 from .api.network import router as network_router
 from .api.replay import router as replay_router
+from .api.reports import nightly_due, record_recurring_sources
+from .api.reports import router as reports_router
 from .config import settings
 from .db import close_pool, open_pool
 from .eventlog import store
@@ -81,6 +83,12 @@ async def _episode_lifecycle_loop():
                 next_sweep = now + TIMER_SWEEP_INTERVAL_S
                 for stream in streams:
                     log.info("timer sweep %s: %s", stream, timers.sweep_due(stream=stream))
+                # PRD 7.7: the nightly recurring-source report, recorded once a day.
+                day = nightly_due(dt.datetime.now(dt.UTC), settings.catchment_tz)
+                if day is not None:
+                    for stream in streams:
+                        if record_recurring_sources(stream, day=day):
+                            log.info("recurring-source report recorded for %s %s", stream, day)
         except asyncio.CancelledError:
             raise
         except Exception:
@@ -114,6 +122,7 @@ app.include_router(replay_router)
 app.include_router(missions_router)
 app.include_router(network_router)
 app.include_router(clinical_router)
+app.include_router(reports_router)
 # CDS Hooks is mounted at the root, not under a prefix: the specification
 # fixes the discovery path at /cds-services and an EHR will not look elsewhere.
 app.include_router(cds_hooks_router)

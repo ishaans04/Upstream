@@ -36,6 +36,7 @@ services:
       OPEN_METEO_BASE_URL: ${OPEN_METEO_BASE_URL}
       # `live,sim` also runs the episode lifecycle for the simulator's stream (the demo).
       EPISODE_STREAMS: ${EPISODE_STREAMS:-live}
+      CATCHMENT_TZ: ${CATCHMENT_TZ:-Asia/Kolkata}
     depends_on: { db: { condition: service_healthy } }
     volumes: ["./data:/app/data"]
     ports: ["8000:8000"]

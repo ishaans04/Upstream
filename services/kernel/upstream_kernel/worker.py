@@ -28,6 +28,7 @@ from .model.posterior import compute_posterior, source_marginals, start_time_cre
 from .model.priors import PriorInputs
 from .physics.params import FLOW_CONDITIONS, default_params
 from .physics.tables import load_tables
+from .pooling import closed_episodes, past_episode_counts
 from .probe import probe
 from .pulse import pulse
 from .trace import explain
@@ -148,14 +149,14 @@ class KernelWorker:
         return int(cond[-1]), inputs
 
     def _past_episode_counts(self, K: int) -> np.ndarray:
-        """Filled by Phase 11 pooling; zeros until then."""
-        counts = np.zeros(K, dtype=np.int32)
-        with self.conn.cursor() as cur:
-            cur.execute("SELECT summary->>'top_source', count(*) FROM episodes "
-                        "WHERE state IN ('CONFIRMED','RESOLVED') GROUP BY 1")
-            for entry_id, n in cur.fetchall():
-                if entry_id in self.net.entry_nodes:
-                    counts[self.net.entry_nodes.index(entry_id)] = n
+        """PRD 7.9 role 3: how often each point has been implicated before (Phase 11).
+
+        Soft counts over this catchment's and this stream's closed episodes only: a
+        simulated incident must never raise live priors (GC-10).
+        """
+        episodes = closed_episodes(self.conn, self.catchment_id, self.stream)
+        counts = past_episode_counts(episodes, self.net)
+        assert len(counts) == K
         return counts
 
     # --- persistence -----------------------------------------------------

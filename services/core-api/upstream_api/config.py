@@ -20,6 +20,8 @@ class Settings(BaseSettings):
     # Streams whose posteriors open episodes and whose timers run. `live` always; add
     # `sim` to drive a simulated incident through the real lifecycle (the demo).
     episode_streams: str = "live"
+    # The catchment's local time zone: the nightly report runs after 02:00 there.
+    catchment_tz: str = "Asia/Kolkata"
 
     @property
     def episode_stream_list(self) -> list[str]:

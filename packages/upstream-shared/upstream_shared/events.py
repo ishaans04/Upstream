@@ -28,6 +28,8 @@ class EventType(StrEnum):
     MISSION_DECLINED = "MissionDeclined"
     # G7: the realised effect, once the first belief that includes the reading exists.
     MISSION_EFFECT_MEASURED = "MissionEffectMeasured"
+    # PRD 7.7: the day's recurring-source report, kept on record (Phase 11).
+    RECURRING_SOURCES_REPORTED = "RecurringSourcesReported"
     FHIR_PUBLISHED = "FhirPublished"
     CLINICAL_TEST_RESULT = "ClinicalTestResult"
     UPSTREAM_SEARCH_REQUESTED = "UpstreamSearchRequested"
