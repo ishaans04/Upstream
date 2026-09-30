@@ -134,16 +134,23 @@ class KernelWorker:
         B = int((grid.horizon_end - grid.horizon_start) // grid.bin_s)
         cond = np.full(B, FLOW_CONDITIONS.index("dry"), dtype=np.int8)
         dry = np.full(B, 24.0)
+        # A bin takes the most severe condition read in it: a storm anywhere in fifteen
+        # minutes is a storm for the spill prior. Last-row-wins, with no ORDER BY, let a
+        # later calmer reading erase a storm and made the result depend on row order,
+        # so the same rainfall could give two fingerprints (GC-6).
+        seen = np.zeros(B, dtype=bool)
         with self.conn.cursor() as cur:
             cur.execute("""SELECT ts, flow_condition, coalesce(antecedent_dry_h,24)
                            FROM rainfall WHERE catchment_id=%s AND stream=%s
-                             AND ts >= to_timestamp(%s) AND ts < to_timestamp(%s)""",
+                             AND ts >= to_timestamp(%s) AND ts < to_timestamp(%s)
+                           ORDER BY ts""",
                         (self.catchment_id, self.stream, grid.horizon_start, grid.horizon_end))
             for ts, fc, adh in cur.fetchall():
                 b = int((ts.timestamp() - grid.horizon_start) // grid.bin_s)
                 if 0 <= b < B and fc in FLOW_CONDITIONS:
-                    cond[b] = FLOW_CONDITIONS.index(fc)
-                    dry[b] = adh
+                    k = FLOW_CONDITIONS.index(fc)
+                    if not seen[b] or k > cond[b]:
+                        cond[b], dry[b], seen[b] = k, adh, True
         K = len(self.net.entry_idx)
         inputs = PriorInputs(cond, dry, self._past_episode_counts(K), np.zeros(K))
         return int(cond[-1]), inputs

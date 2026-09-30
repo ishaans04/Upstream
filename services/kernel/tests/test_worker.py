@@ -140,3 +140,35 @@ def test_the_consumer_position_is_kept_per_catchment_and_stream(kernel_worker, d
     with db_conn.cursor() as cur:
         cur.execute("SELECT last_seq FROM consumer_positions WHERE consumer=%s", (name,))
         assert cur.fetchone()[0] == 4242
+
+
+@pytest.mark.parametrize("order", ["storm first", "storm last"])
+def test_a_storm_anywhere_in_a_bin_makes_it_a_storm_bin(kernel_worker, db_conn, order):
+    """Two readings in one 15-minute bin: the bin took whichever row the database
+    returned last, with no ORDER BY. A storm then vanished behind a later, calmer
+    reading, and the same rainfall could give two fingerprints (GC-6). Found by the
+    PRD 10.5 demo, where a 68 mm/h burst at 02:10 was erased by steady rain at 02:20."""
+    from upstream_kernel.model.hypotheses import build_grid
+    from upstream_kernel.physics.params import FLOW_CONDITIONS
+    from upstream_kernel.worker import BIN_S
+
+    start, end = kernel_worker._horizon()
+    grid = build_grid(kernel_worker.net, horizon_start=start, horizon_end=end, bin_s=BIN_S)
+    bin_start = end - dt.timedelta(seconds=3 * BIN_S)
+    rows = [(bin_start + dt.timedelta(minutes=1), 68.0, "storm"),
+            (bin_start + dt.timedelta(minutes=10), 4.0, "wet")]
+    if order == "storm last":
+        rows = [(bin_start + dt.timedelta(minutes=1), 4.0, "wet"),
+                (bin_start + dt.timedelta(minutes=10), 68.0, "storm")]
+    with db_conn.cursor() as cur:
+        for ts, mm, fc in rows:
+            cur.execute("INSERT INTO rainfall (ts, catchment_id, stream, mm_per_h, "
+                        "antecedent_dry_h, flow_condition) VALUES (%s,%s,%s,%s,24,%s)",
+                        (ts, kernel_worker.catchment_id, kernel_worker.stream, mm, fc))
+    try:
+        _, inputs = kernel_worker._flow_and_priors(grid)
+        b = int((bin_start.timestamp() - grid.horizon_start) // grid.bin_s)
+        assert FLOW_CONDITIONS[int(inputs.flow_condition_by_bin[b])] == "storm"
+    finally:
+        with db_conn.cursor() as cur:
+            cur.execute("DELETE FROM rainfall WHERE catchment_id=%s", (kernel_worker.catchment_id,))
