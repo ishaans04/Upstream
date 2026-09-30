@@ -1,0 +1,1832 @@
+{
+  "components": {
+    "schemas": {
+      "CompleteIn": {
+        "properties": {
+          "evidence_event_id": {
+            "title": "Evidence Event Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "evidence_event_id"
+        ],
+        "title": "CompleteIn",
+        "type": "object"
+      },
+      "ConfirmIn": {
+        "properties": {
+          "ai_assisted": {
+            "default": false,
+            "title": "Ai Assisted",
+            "type": "boolean"
+          },
+          "confirmed_by_observer": {
+            "default": false,
+            "title": "Confirmed By Observer",
+            "type": "boolean"
+          },
+          "idempotency_key": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idempotency Key"
+          },
+          "method": {
+            "$ref": "#/components/schemas/ObservationMethod"
+          },
+          "mission_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mission Id"
+          },
+          "node_id": {
+            "title": "Node Id",
+            "type": "string"
+          },
+          "oah_codes": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Oah Codes",
+            "type": "array"
+          },
+          "observed_at": {
+            "format": "date-time",
+            "title": "Observed At",
+            "type": "string"
+          },
+          "observer_id": {
+            "title": "Observer Id",
+            "type": "string"
+          },
+          "observer_type": {
+            "title": "Observer Type",
+            "type": "string"
+          },
+          "photo_uri": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Photo Uri"
+          },
+          "result": {
+            "$ref": "#/components/schemas/ObservationResult"
+          },
+          "snap_distance_m": {
+            "title": "Snap Distance M",
+            "type": "number"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "node_id",
+          "observed_at",
+          "method",
+          "result",
+          "observer_id",
+          "observer_type",
+          "snap_distance_m"
+        ],
+        "title": "ConfirmIn",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "LabIn": {
+        "description": "A lab result is not a field observation.\n\nIt carries no `result` (it is quantitative by definition) and no snap distance:\nthe sample is tied to a node id by the chain of custody, not by a GPS fix.",
+        "properties": {
+          "method": {
+            "$ref": "#/components/schemas/ObservationMethod"
+          },
+          "mission_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mission Id"
+          },
+          "node_id": {
+            "title": "Node Id",
+            "type": "string"
+          },
+          "oah_codes": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Oah Codes",
+            "type": "array"
+          },
+          "observed_at": {
+            "format": "date-time",
+            "title": "Observed At",
+            "type": "string"
+          },
+          "observer_id": {
+            "title": "Observer Id",
+            "type": "string"
+          },
+          "observer_type": {
+            "default": "lab",
+            "title": "Observer Type",
+            "type": "string"
+          },
+          "snap_distance_m": {
+            "default": 0.0,
+            "title": "Snap Distance M",
+            "type": "number"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "node_id",
+          "observed_at",
+          "method",
+          "value",
+          "unit",
+          "observer_id"
+        ],
+        "title": "LabIn",
+        "type": "object"
+      },
+      "ObservationMethod": {
+        "enum": [
+          "citizen_visual_olfactory",
+          "citizen_freetext",
+          "citizen_photo",
+          "test_strip",
+          "sensor_turbidity",
+          "sensor_conductivity",
+          "sensor_normal_window",
+          "field_test",
+          "lab_ecoli",
+          "lab_enterococci",
+          "overflow_telemetry",
+          "bioassessment"
+        ],
+        "title": "ObservationMethod",
+        "type": "string"
+      },
+      "ObservationResult": {
+        "enum": [
+          "positive",
+          "negative",
+          "quantitative"
+        ],
+        "title": "ObservationResult",
+        "type": "string"
+      },
+      "OverflowIn": {
+        "properties": {
+          "active": {
+            "title": "Active",
+            "type": "boolean"
+          },
+          "node_id": {
+            "title": "Node Id",
+            "type": "string"
+          },
+          "outfall_id": {
+            "title": "Outfall Id",
+            "type": "string"
+          },
+          "ts": {
+            "format": "date-time",
+            "title": "Ts",
+            "type": "string"
+          }
+        },
+        "required": [
+          "outfall_id",
+          "node_id",
+          "ts",
+          "active"
+        ],
+        "title": "OverflowIn",
+        "type": "object"
+      },
+      "ProposeIn": {
+        "properties": {
+          "free_text": {
+            "default": "",
+            "title": "Free Text",
+            "type": "string"
+          },
+          "lat": {
+            "title": "Lat",
+            "type": "number"
+          },
+          "lon": {
+            "title": "Lon",
+            "type": "number"
+          },
+          "observed_at": {
+            "format": "date-time",
+            "title": "Observed At",
+            "type": "string"
+          },
+          "photo_uri": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Photo Uri"
+          }
+        },
+        "required": [
+          "lon",
+          "lat",
+          "observed_at"
+        ],
+        "title": "ProposeIn",
+        "type": "object"
+      },
+      "RainfallIn": {
+        "properties": {
+          "antecedent_dry_h": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Antecedent Dry H"
+          },
+          "mm_per_h": {
+            "title": "Mm Per H",
+            "type": "number"
+          },
+          "stream": {
+            "default": "live",
+            "title": "Stream",
+            "type": "string"
+          },
+          "ts": {
+            "format": "date-time",
+            "title": "Ts",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ts",
+          "mm_per_h"
+        ],
+        "title": "RainfallIn",
+        "type": "object"
+      },
+      "RetractIn": {
+        "description": "The documented request shape for FR-10 is {event_id, reason}.",
+        "properties": {
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "retracted_by": {
+            "title": "Retracted By",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "reason",
+          "retracted_by"
+        ],
+        "title": "RetractIn",
+        "type": "object"
+      },
+      "SensorIn": {
+        "properties": {
+          "node_id": {
+            "title": "Node Id",
+            "type": "string"
+          },
+          "parameter": {
+            "title": "Parameter",
+            "type": "string"
+          },
+          "sensor_id": {
+            "title": "Sensor Id",
+            "type": "string"
+          },
+          "stream": {
+            "default": "live",
+            "title": "Stream",
+            "type": "string"
+          },
+          "ts": {
+            "format": "date-time",
+            "title": "Ts",
+            "type": "string"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "sensor_id",
+          "node_id",
+          "ts",
+          "parameter",
+          "value",
+          "unit"
+        ],
+        "title": "SensorIn",
+        "type": "object"
+      },
+      "SignoffIn": {
+        "properties": {
+          "field_result_event_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Field Result Event Id"
+          },
+          "officer_id": {
+            "title": "Officer Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "officer_id"
+        ],
+        "title": "SignoffIn",
+        "type": "object"
+      },
+      "SignoffRequestIn": {
+        "properties": {
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "SignoffRequestIn",
+        "type": "object"
+      },
+      "TestResultIn": {
+        "additionalProperties": false,
+        "description": "FR-34: a test result, and nothing that could be read back as a count.\n\n`area_code` and `syndrome` say which question the p-value answers; without them\ntwo results for one episode would be indistinguishable. Both are aggregate\nlabels the environmental side already publishes (the area is the zone's\npopulation Group), so neither says anything about a person.",
+        "properties": {
+          "area_code": {
+            "title": "Area Code",
+            "type": "string"
+          },
+          "computed_at": {
+            "format": "date-time",
+            "title": "Computed At",
+            "type": "string"
+          },
+          "effect_size": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effect Size"
+          },
+          "episode_id": {
+            "title": "Episode Id",
+            "type": "string"
+          },
+          "method": {
+            "title": "Method",
+            "type": "string"
+          },
+          "n_days": {
+            "minimum": 1.0,
+            "title": "N Days",
+            "type": "integer"
+          },
+          "p_value": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "P Value",
+            "type": "number"
+          },
+          "syndrome": {
+            "title": "Syndrome",
+            "type": "string"
+          }
+        },
+        "required": [
+          "episode_id",
+          "area_code",
+          "syndrome",
+          "method",
+          "p_value",
+          "effect_size",
+          "n_days",
+          "computed_at"
+        ],
+        "title": "TestResultIn",
+        "type": "object"
+      },
+      "UpstreamSearchIn": {
+        "additionalProperties": false,
+        "description": "FR-35: an unexplained cluster, reduced to where, when and how surprising.",
+        "properties": {
+          "area_code": {
+            "title": "Area Code",
+            "type": "string"
+          },
+          "day": {
+            "format": "date",
+            "title": "Day",
+            "type": "string"
+          },
+          "method": {
+            "title": "Method",
+            "type": "string"
+          },
+          "p_value": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "P Value",
+            "type": "number"
+          },
+          "syndrome": {
+            "title": "Syndrome",
+            "type": "string"
+          }
+        },
+        "required": [
+          "area_code",
+          "syndrome",
+          "day",
+          "p_value",
+          "method"
+        ],
+        "title": "UpstreamSearchIn",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      },
+      "VolunteerIn": {
+        "properties": {
+          "volunteer_id": {
+            "title": "Volunteer Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "volunteer_id"
+        ],
+        "title": "VolunteerIn",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "Upstream Core API",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/cds-services": {
+      "get": {
+        "operationId": "discovery_cds_services_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Discovery Cds Services Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Discovery",
+        "tags": [
+          "cds-hooks"
+        ]
+      }
+    },
+    "/cds-services/{service_id}": {
+      "post": {
+        "operationId": "hook_cds_services__service_id__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "service_id",
+            "required": true,
+            "schema": {
+              "title": "Service Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Hook Cds Services  Service Id  Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Hook",
+        "tags": [
+          "cds-hooks"
+        ]
+      }
+    },
+    "/clinical/episodes": {
+      "get": {
+        "description": "Episodes a clinical test could still say something about.\n\nThe same rule the CDS card uses: PROBABLE or CONFIRMED, and still inside the\nclinical relevance window. A SUSPECTED episode is one unconfirmed report, and\ntesting hospital data against it would spend the health zone's attention on noise.",
+        "operationId": "clinical_episodes_clinical_episodes_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "stream",
+            "required": false,
+            "schema": {
+              "default": "live",
+              "enum": [
+                "live",
+                "sim"
+              ],
+              "title": "Stream",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Clinical Episodes",
+        "tags": [
+          "clinical"
+        ]
+      }
+    },
+    "/clinical/test-result": {
+      "post": {
+        "description": "Append a ClinicalTestResult. The payload is the body, verbatim, and nothing more.",
+        "operationId": "clinical_test_result_clinical_test_result_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "stream",
+            "required": false,
+            "schema": {
+              "default": "live",
+              "enum": [
+                "live",
+                "sim"
+              ],
+              "title": "Stream",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestResultIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Clinical Test Result",
+        "tags": [
+          "clinical"
+        ]
+      }
+    },
+    "/clinical/upstream-search": {
+      "post": {
+        "description": "Ask the environmental side to look upstream of an area it has no episode for.\n\nThe area is resolved back to its zone here, on the environmental side, so the\nrequest carries the node the kernel would search from. An area this catchment\ndoes not know is refused rather than logged as a request nobody can act on.",
+        "operationId": "upstream_search_clinical_upstream_search_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "stream",
+            "required": false,
+            "schema": {
+              "default": "live",
+              "enum": [
+                "live",
+                "sim"
+              ],
+              "title": "Stream",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpstreamSearchIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Upstream Search",
+        "tags": [
+          "clinical"
+        ]
+      }
+    },
+    "/episodes": {
+      "get": {
+        "operationId": "list_episodes_episodes_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "stream",
+            "required": false,
+            "schema": {
+              "default": "live",
+              "title": "Stream",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Episodes",
+        "tags": [
+          "episodes"
+        ]
+      }
+    },
+    "/episodes/{episode_id}": {
+      "get": {
+        "description": "One episode with the belief behind it and the evidence it was built from.",
+        "operationId": "get_episode_episodes__episode_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "episode_id",
+            "required": true,
+            "schema": {
+              "title": "Episode Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "stream",
+            "required": false,
+            "schema": {
+              "default": "live",
+              "title": "Stream",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Episode",
+        "tags": [
+          "episodes"
+        ]
+      }
+    },
+    "/episodes/{episode_id}/signoff": {
+      "post": {
+        "description": "FR-21. The workflow is the authority; this turns its refusals into status codes.",
+        "operationId": "signoff_episodes__episode_id__signoff_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "episode_id",
+            "required": true,
+            "schema": {
+              "title": "Episode Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignoffIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Signoff",
+        "tags": [
+          "episodes"
+        ]
+      }
+    },
+    "/episodes/{episode_id}/signoff/request": {
+      "post": {
+        "operationId": "ask_for_signoff_episodes__episode_id__signoff_request_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "episode_id",
+            "required": true,
+            "schema": {
+              "title": "Episode Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignoffRequestIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Ask For Signoff",
+        "tags": [
+          "episodes"
+        ]
+      }
+    },
+    "/healthz": {
+      "get": {
+        "operationId": "healthz_healthz_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Healthz"
+      }
+    },
+    "/ingest/lab": {
+      "post": {
+        "description": "FR-9: lab results, including ones that arrive days later (GC-4).",
+        "operationId": "lab_result_ingest_lab_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LabIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Lab Result",
+        "tags": [
+          "ingest"
+        ]
+      }
+    },
+    "/ingest/overflow": {
+      "post": {
+        "description": "FR-8: an overflow activation is both a signal and a piece of evidence.",
+        "operationId": "overflow_ingest_overflow_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OverflowIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Overflow",
+        "tags": [
+          "ingest"
+        ]
+      }
+    },
+    "/ingest/rainfall": {
+      "post": {
+        "description": "FR-7: rainfall every 15 minutes, with the derived flow condition (PRD 7.9).",
+        "operationId": "rainfall_ingest_rainfall_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RainfallIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Rainfall",
+        "tags": [
+          "ingest"
+        ]
+      }
+    },
+    "/ingest/report/confirm": {
+      "post": {
+        "description": "FR-1, FR-2, FR-3: record confirmed evidence, positive or negative.",
+        "operationId": "confirm_ingest_report_confirm_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Confirm",
+        "tags": [
+          "ingest"
+        ]
+      }
+    },
+    "/ingest/report/propose": {
+      "post": {
+        "description": "FR-3: AI proposes fields. Appends nothing to the log (GC-8).",
+        "operationId": "propose_ingest_report_propose_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProposeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Propose",
+        "tags": [
+          "ingest"
+        ]
+      }
+    },
+    "/ingest/retract": {
+      "post": {
+        "description": "FR-10: retraction is a new event, never a delete (GC-5).",
+        "operationId": "retract_ingest_retract_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RetractIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Retract",
+        "tags": [
+          "ingest"
+        ]
+      }
+    },
+    "/ingest/sensor": {
+      "post": {
+        "description": "FR-6: raw readings land in the hypertable; derived evidence comes from sensor_job.",
+        "operationId": "sensor_ingest_sensor_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SensorIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Sensor",
+        "tags": [
+          "ingest"
+        ]
+      }
+    },
+    "/missions/mine": {
+      "get": {
+        "operationId": "my_missions_missions_mine_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "volunteer_id",
+            "required": true,
+            "schema": {
+              "title": "Volunteer Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "include_closed",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include Closed",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "My Missions",
+        "tags": [
+          "missions"
+        ]
+      }
+    },
+    "/missions/{mission_id}": {
+      "get": {
+        "operationId": "one_mission_missions__mission_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "mission_id",
+            "required": true,
+            "schema": {
+              "title": "Mission Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "One Mission",
+        "tags": [
+          "missions"
+        ]
+      }
+    },
+    "/missions/{mission_id}/accept": {
+      "post": {
+        "operationId": "accept_missions__mission_id__accept_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "mission_id",
+            "required": true,
+            "schema": {
+              "title": "Mission Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VolunteerIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Accept",
+        "tags": [
+          "missions"
+        ]
+      }
+    },
+    "/missions/{mission_id}/complete": {
+      "post": {
+        "operationId": "complete_missions__mission_id__complete_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "mission_id",
+            "required": true,
+            "schema": {
+              "title": "Mission Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompleteIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Complete",
+        "tags": [
+          "missions"
+        ]
+      }
+    },
+    "/missions/{mission_id}/decline": {
+      "post": {
+        "operationId": "decline_missions__mission_id__decline_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "mission_id",
+            "required": true,
+            "schema": {
+              "title": "Mission Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VolunteerIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Decline",
+        "tags": [
+          "missions"
+        ]
+      }
+    },
+    "/missions/{mission_id}/feedback": {
+      "get": {
+        "description": "The measured effect, again: the phone may have been offline when it completed.",
+        "operationId": "feedback_missions__mission_id__feedback_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "mission_id",
+            "required": true,
+            "schema": {
+              "title": "Mission Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Feedback",
+        "tags": [
+          "missions"
+        ]
+      }
+    },
+    "/network/geojson": {
+      "get": {
+        "operationId": "network_geojson_network_geojson_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "network_version",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Network Version"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Network Geojson",
+        "tags": [
+          "network"
+        ]
+      }
+    },
+    "/public-health/episodes": {
+      "get": {
+        "description": "FR-39: the clinical view.\n\nExposure windows and pathways only. No candidate source, no marginals, no evidence:\nGC-12 forbids naming a polluter, and every record carries the notice verbatim.",
+        "operationId": "public_health_episodes_public_health_episodes_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "stream",
+            "required": false,
+            "schema": {
+              "default": "live",
+              "title": "Stream",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Public Health Episodes",
+        "tags": [
+          "episodes"
+        ]
+      }
+    },
+    "/replay": {
+      "get": {
+        "operationId": "replay_replay_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "at",
+            "required": true,
+            "schema": {
+              "format": "date-time",
+              "title": "At",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "stream",
+            "required": false,
+            "schema": {
+              "default": "live",
+              "title": "Stream",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Replay",
+        "tags": [
+          "replay"
+        ]
+      }
+    },
+    "/replay/timeline": {
+      "get": {
+        "description": "Every snapshot's moment and headline probability: the Phase 10 slider's track.\n\n`since` starts the track at an episode. Oldest-first with a limit would otherwise\nnever reach today on a stream that has been running for months.",
+        "operationId": "timeline_replay_timeline_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "stream",
+            "required": false,
+            "schema": {
+              "default": "live",
+              "title": "Stream",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "since",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Since"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 500,
+              "maximum": 5000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Timeline",
+        "tags": [
+          "replay"
+        ]
+      }
+    }
+  }
+}
