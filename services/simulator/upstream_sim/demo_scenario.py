@@ -56,10 +56,10 @@ MIN = 60
 CLINICAL_HISTORY_DAYS = 120          # a baseline needs at least 28 observed days
 CLINICAL_ZONES = 8                   # the most-exposed areas; enough to show the loop
 # Extra presentations per exposed area, stated rather than derived. The zones on this
-# network carry a placeholder population of 200 (docs/ASSUMPTIONS.md); at a 10% attack
-# rate that is two or three cases an area, which no test could tell from a normal
-# week - and saying so is the honest result. The demo shows the loop at a size where
-# detection is possible, and says what size that is.
+# network carry placeholder populations, 200 for 81 of the 83 (docs/ASSUMPTIONS.md); at
+# a 10% attack rate that is two or three cases an area, which no test could tell from a
+# normal week - and saying so is the honest result. The demo shows the loop at a size
+# where detection is possible, and says what size that is.
 OUTBREAK_CASES_PER_AREA = 25
 
 

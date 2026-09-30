@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+message: "If you use Upstream, please cite it as below."
+title: "Upstream (upstream-onehealth): an event-driven One Health system for urban streams"
+abstract: >-
+  Upstream turns sparse citizen and sensor observations of an urban stream into an
+  Exposure Episode: an exact Bayesian belief about where contamination came from
+  (TRACE), when each downstream area is exposed (PULSE) and where the next observation
+  is most informative (PROBE), published as FHIR R4 resources that extend the
+  OneAquaHealth Implementation Guide (BRIDGE).
+type: software
+authors:
+  - alias: ishaans04
+repository-code: "https://github.com/ishaans04/Upstream"
+license: Apache-2.0
+version: 0.1.0-hackathon
+date-released: "2026-09-30"
+keywords:
+  - One Health
+  - HL7 FHIR
+  - OneAquaHealth
+  - Bayesian inference
+  - citizen science
+  - water quality
