@@ -72,7 +72,8 @@ def on_posterior_computed(event) -> None:
     if ep is None or EpisodeState(ep["state"]) in CLOSED:
         if p_event < THRESHOLD_SUSPECTED:
             return                              # nothing open, and nothing worth opening
-        ep = _reopen(ep, event, p_event) if ep is not None else _open(event, p_event)
+        ep = (_reopen(ep, event, p_event) if ep is not None and _may_reopen(ep)
+              else _open(event, p_event))
 
     target = _target_state(EpisodeState(ep["state"]), p_event)
     if target is not None and EpisodeState(ep["state"]).can_transition_to(target):
@@ -131,6 +132,17 @@ def _open(event, p_event: float) -> dict:
         causation_id=event.event_id))
     timers.start(episode_workflow, settings.catchment_id, episode_id)
     return _episode(episode_id)
+
+
+def _may_reopen(ep: dict) -> bool:
+    """Is a new belief still about this closed episode's event?
+
+    Only while the episode has been closed for less than the kernel's evidence horizon.
+    After that none of the evidence it was built on is in the belief any more, so the
+    belief is about something new: a new episode, not a reopening. Without this bound
+    every later incident reopened the last one, forever.
+    """
+    return _now() - ep["state_changed_at"] < EVIDENCE_HORIZON
 
 
 def _reopen(ep: dict, event, p_event: float) -> dict:

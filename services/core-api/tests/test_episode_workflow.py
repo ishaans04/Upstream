@@ -201,6 +201,23 @@ def test_reopening_reuses_the_episode_rather_than_opening_a_second_one(
     assert episode_row()["episode_id"] == ep
 
 
+def test_a_new_incident_weeks_later_is_a_new_episode_not_a_reopening(
+        emit_posterior, episode_row, fast_clock):
+    """Reopening is for late evidence about the same event (PRD 6.3). Once an episode has
+    been closed for longer than the kernel's evidence horizon, none of its evidence is in
+    the belief any more: a new belief is about a new event. Reopening regardless folded
+    every later incident into one endless episode, which pooling (FR-19) cannot count."""
+    emit_posterior(p_event=0.94)
+    old = episode_row()["episode_id"]
+    fast_clock.advance(days=17)                     # resolved
+    assert episode_row(old)["state"] == "RESOLVED"
+    fast_clock.advance(days=30)
+    emit_posterior(p_event=0.97)
+    new = episode_row()
+    assert new["episode_id"] != old and new["state"] == "PROBABLE"
+    assert episode_row(old)["state"] == "RESOLVED"
+
+
 def test_sign_off_request_is_recorded_as_an_event(emit_posterior, episode_row, events_since):
     from upstream_api.workflows.episode import request_signoff
 
