@@ -147,7 +147,7 @@ def _insert_mission(spec: MissionSpec, volunteer_id: str | None) -> None:
                      MissionStatus.CREATED.value, spec.expected_gain))
 
 
-def create_bioassessment_mission(episode_id: str) -> str:
+def create_bioassessment_mission(episode_id: str, *, now: dt.datetime | None = None) -> str:
     """FR-24: a macroinvertebrate survey some weeks after the episode.
 
     Unassigned on purpose. A bioassessment is a scheduled survey rather than an errand
@@ -159,7 +159,8 @@ def create_bioassessment_mission(episode_id: str) -> str:
         # episode can leave two timers running for one episode. FR-24 wants a survey,
         # not a survey per restart.
         return existing
-    start = dt.datetime.now(dt.UTC) + dt.timedelta(days=BIOASSESSMENT_DELAY_DAYS)
+    now = now or dt.datetime.now(dt.UTC)                 # when the episode ended
+    start = now + dt.timedelta(days=BIOASSESSMENT_DELAY_DAYS)
     spec = MissionSpec(
         mission_id=f"M-{uuid.uuid4().hex[:4].upper()}", episode_id=episode_id,
         node_id=_episode_node(episode_id),

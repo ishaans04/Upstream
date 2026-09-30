@@ -315,19 +315,22 @@ def resolve_due_episodes(now: dt.datetime | None = None, *,
         if EpisodeState(ep["state"]).can_transition_to(EpisodeState.RESOLVED) and _transition(
                 ep, EpisodeState.RESOLVED, reason="clinical relevance window elapsed"):
             resolved.append(ep["episode_id"])
+            # FR-24: a confirmed episode gets a recovery survey, scheduled here, where
+            # the sweep and the durable workflow both pass. Asking afterwards whether
+            # the episode is still CONFIRMED is always no: it has just resolved.
+            if ep["state"] == EpisodeState.CONFIRMED.value:
+                from .missions import create_bioassessment_mission
+                create_bioassessment_mission(ep["episode_id"], now=now)
     return resolved
 
 
 @DBOS.workflow()
 def episode_workflow(catchment_id: str, episode_id: str) -> None:
-    """Durable timers: FR-22 (clinical window) and FR-24 (post-episode bioassessment)."""
+    """Durable timer: FR-22 (clinical window). Resolving a confirmed episode also
+    schedules its FR-24 bioassessment, whose window opens two weeks later."""
     ep = _episode(episode_id)
     DBOS.sleep(max((ep["clinical_window_end"] - _now()).total_seconds(), 0.0))
     resolve_due_episodes(stream=ep["stream"])
-    if _episode(episode_id)["state"] == EpisodeState.CONFIRMED.value:
-        DBOS.sleep(14 * 24 * 3600)                    # FR-24: 2-4 weeks later
-        from .missions import create_bioassessment_mission
-        create_bioassessment_mission(episode_id)
 
 
 # --------------------------------------------------------------------------- reads

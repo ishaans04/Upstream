@@ -8,6 +8,7 @@ from __future__ import annotations
 import datetime as dt
 
 import pytest
+from conftest import STREAM
 
 # --------------------------------------------------------------------------- creation
 
@@ -261,6 +262,59 @@ def test_the_bioassessment_window_is_open_for_weeks_not_minutes(an_episode, miss
 
     row = mission_row(create_bioassessment_mission(an_episode))
     assert row["window_end"] - row["window_start"] >= dt.timedelta(days=7)
+
+
+def _bioassessments(db_conn, episode_id: str) -> list[tuple]:
+    with db_conn.cursor() as cur:
+        cur.execute("SELECT mission_id, window_start FROM missions "
+                    "WHERE episode_id=%s AND 'bioassessment' = ANY(methods)", (episode_id,))
+        return cur.fetchall()
+
+
+def _confirm(episode_id: str, post_evidence) -> None:
+    from upstream_api.workflows.episode import give_signoff
+
+    give_signoff(episode_id, "off-1", post_evidence("positive"))
+
+
+def test_resolving_a_confirmed_episode_schedules_its_bioassessment(an_episode, episode_row,
+                                                                   db_conn, post_evidence):
+    """FR-24, through the path that actually runs. The workflow resolved the episode and
+    then asked whether it was *still* CONFIRMED, which it never is once resolved: no
+    bioassessment was ever created outside tests that called the creator directly."""
+    from upstream_api.workflows import timers
+    from upstream_api.workflows.missions import BIOASSESSMENT_DELAY_DAYS
+
+    _confirm(an_episode, post_evidence)
+    assert episode_row(an_episode)["state"] == "CONFIRMED"
+    after_window = episode_row(an_episode)["clinical_window_end"] + dt.timedelta(minutes=1)
+    assert timers.sweep_due(after_window, stream=STREAM)["episodes_resolved"] >= 1
+    assert episode_row(an_episode)["state"] == "RESOLVED"
+    (mission,) = _bioassessments(db_conn, an_episode)
+    # Two to four weeks after the episode ended, measured from the resolution.
+    assert mission[1] == after_window + dt.timedelta(days=BIOASSESSMENT_DELAY_DAYS)
+
+
+def test_an_episode_that_was_never_confirmed_gets_no_bioassessment(an_episode, episode_row,
+                                                                  db_conn):
+    """PROBABLE can resolve without confirmation; there is nothing to measure recovery from."""
+    from upstream_api.workflows import timers
+
+    after_window = episode_row(an_episode)["clinical_window_end"] + dt.timedelta(minutes=1)
+    timers.sweep_due(after_window, stream=STREAM)
+    assert episode_row(an_episode)["state"] == "RESOLVED"
+    assert _bioassessments(db_conn, an_episode) == []
+
+
+def test_sweeping_twice_schedules_one_bioassessment(an_episode, episode_row, db_conn,
+                                                    post_evidence):
+    from upstream_api.workflows import timers
+
+    _confirm(an_episode, post_evidence)
+    after_window = episode_row(an_episode)["clinical_window_end"] + dt.timedelta(minutes=1)
+    timers.sweep_due(after_window, stream=STREAM)
+    timers.sweep_due(after_window + dt.timedelta(days=1), stream=STREAM)
+    assert len(_bioassessments(db_conn, an_episode)) == 1
 
 
 # --------------------------------------------------------------------------- push
