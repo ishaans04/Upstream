@@ -121,9 +121,13 @@ def measure_report(zone_id: str, day: dt.date, count: int, *,
 
 
 def zone_measure_reports(zone_id: str, population: int, exposure, first: dt.date,
-                         last: dt.date, rng: np.random.Generator) -> tuple[list[dict], dict]:
-    """Every daily report for one zone's area, and the truth behind them."""
-    excess = excess_cases(exposure, population, rng)
+                         last: dt.date, rng: np.random.Generator, *,
+                         n_cases: int | None = None) -> tuple[list[dict], dict]:
+    """Every daily report for one zone's area, and the truth behind them.
+
+    `n_cases` fixes the outbreak's size (see `excess_cases`).
+    """
+    excess = excess_cases(exposure, population, rng, n_cases=n_cases)
     days, base, extra = area_counts(first, last, rng, excess=excess)
     reports = [measure_report(zone_id, dt.date.fromordinal(int(d)), int(b + e))
                for d, b, e in zip(days, base, extra, strict=True)]

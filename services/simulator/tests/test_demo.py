@@ -62,3 +62,27 @@ def test_ending_the_demo_takes_only_its_volunteers_off_duty(owner_dsn):
             assert dict(cur.fetchall()) == {"vol-sim-99": True, "vol-real-99": False}
         finally:
             cur.execute("DELETE FROM volunteers WHERE volunteer_id = ANY(%s)", (list(ids),))
+
+
+def test_downstream_nodes_follow_the_edges_not_the_edge_numbers(net):
+    """`downstream_path` holds edge indices; reading them as nodes put the demo's
+    sensor and zones in the wrong places and the true plume nowhere near them."""
+    from upstream_sim.demo_scenario import downstream_nodes
+
+    k = int(net.entry_idx[0])
+    nodes = downstream_nodes(net, k)
+    assert nodes, "an outfall drains somewhere"
+    assert all(net.upstream_mask[k, n] for n in nodes)
+    assert int(net.edges[net.downstream_path[k][0]][0]) == k
+
+
+def test_the_demo_source_has_a_rival_upstream_and_zones_below(net):
+    """PRD 10.5's story needs an outfall whose reports cannot be told from a rival's."""
+    from upstream_sim.demo_scenario import choose_cast
+
+    source, zones = choose_cast(net)
+    k = net.node_index[source]
+    assert net.entry_source_type[net.entry_nodes.index(source)] == "cso"
+    assert any(net.upstream_mask[int(r), k] for r in net.entry_idx if int(r) != k)
+    assert zones and all(
+        net.upstream_mask[k, int(net.zone_node_idx[net.zone_ids.index(z)])] for z in zones)
