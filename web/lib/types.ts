@@ -87,7 +87,7 @@ export type EvidencePayload = {
   result: "positive" | "negative" | "quantitative";
   value?: number | null;
   unit?: string | null;
-  observer_id: string;
+  observer_id?: string;            // withheld from public reads (PRD 14.2)
   observer_type: string;
   mission_id?: string | null;
 };

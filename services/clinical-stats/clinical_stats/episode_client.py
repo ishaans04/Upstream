@@ -16,6 +16,10 @@ import httpx
 from .matched_filter import TestResult
 
 BASE_URL = os.environ.get("EPISODE_API_BASE_URL", "http://api:8000")
+# A public_health service token (Phase 11): the Core API's /clinical routes require it.
+# Mint one with `python -m upstream_api.security mint --sub clinical-stats
+# --role public_health`.
+TOKEN = os.environ.get("CORE_API_TOKEN", "")
 
 # Tests replace the transport to see exactly what would have been sent.
 _transport: httpx.BaseTransport | None = None
@@ -27,7 +31,8 @@ def use_transport(transport: httpx.BaseTransport | None) -> None:
 
 
 def _client() -> httpx.Client:
-    return httpx.Client(base_url=BASE_URL, timeout=15.0, transport=_transport)
+    headers = {"Authorization": f"Bearer {TOKEN}"} if TOKEN else {}
+    return httpx.Client(base_url=BASE_URL, timeout=15.0, transport=_transport, headers=headers)
 
 
 def active_episodes(stream: str = "live") -> list[dict]:

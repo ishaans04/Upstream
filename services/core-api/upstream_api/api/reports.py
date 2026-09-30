@@ -14,7 +14,7 @@ import dataclasses
 import datetime as dt
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 from upstream_kernel.pooling import MIN_EPISODES, RHO, pool_closed_episodes
 from upstream_shared.events import EventEnvelope, EventType
 
@@ -22,6 +22,7 @@ from ..config import settings
 from ..db import pool
 from ..eventlog import store
 from ..network import get_network
+from ..security import require_roles
 
 router = APIRouter(tags=["reports"])
 
@@ -59,7 +60,8 @@ def recurring_sources(stream: str, since_days: int = 365) -> dict:
             "method": METHOD, "notice": NOT_A_FINDING, "sources": sources}
 
 
-@router.get("/reports/recurring-sources")
+@router.get("/reports/recurring-sources",
+            dependencies=[Depends(require_roles("agency", "officer"))])
 def get_recurring_sources(stream: str = "live", since_days: int = Query(365, ge=1, le=3650)):
     return recurring_sources(stream, since_days)
 

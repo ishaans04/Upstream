@@ -8,6 +8,7 @@ from upstream_shared.events import EventEnvelope, EventType
 
 from .api.clinical import router as clinical_router
 from .api.episodes import router as episodes_router
+from .api.exports import router as exports_router
 from .api.missions import router as missions_router
 from .api.network import router as network_router
 from .api.replay import router as replay_router
@@ -123,6 +124,7 @@ app.include_router(missions_router)
 app.include_router(network_router)
 app.include_router(clinical_router)
 app.include_router(reports_router)
+app.include_router(exports_router)
 # CDS Hooks is mounted at the root, not under a prefix: the specification
 # fixes the discovery path at /cds-services and an EHR will not look elsewhere.
 app.include_router(cds_hooks_router)

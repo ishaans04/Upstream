@@ -13,7 +13,7 @@ import datetime as dt
 import uuid
 
 import psycopg
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ValidationError
@@ -25,6 +25,7 @@ from ..config import settings
 from ..db import pool
 from ..eventlog import store
 from ..network import snap
+from ..security import require_roles
 from .normaliser import get_normaliser
 
 router = APIRouter(prefix="/ingest", tags=["ingest"])
@@ -115,7 +116,7 @@ def confirm(body: ConfirmIn):
     return _append_evidence(body)
 
 
-@router.post("/lab", status_code=201)
+@router.post("/lab", status_code=201, dependencies=[Depends(require_roles("officer"))])
 def lab_result(body: LabIn):
     """FR-9: lab results, including ones that arrive days later (GC-4)."""
     confirmed = ConfirmIn(**body.model_dump(),
@@ -124,7 +125,7 @@ def lab_result(body: LabIn):
     return _append_evidence(confirmed)
 
 
-@router.post("/retract", status_code=201)
+@router.post("/retract", status_code=201, dependencies=[Depends(require_roles("officer"))])
 def retract(body: RetractIn):
     """FR-10: retraction is a new event, never a delete (GC-5)."""
     payload = RetractionPayload(retracts_event_id=body.event_id, reason=body.reason,
@@ -151,7 +152,7 @@ class SensorIn(BaseModel):
     stream: str = "live"
 
 
-@router.post("/sensor", status_code=201)
+@router.post("/sensor", status_code=201, dependencies=[Depends(require_roles("agency"))])
 def sensor(body: SensorIn):
     """FR-6: raw readings land in the hypertable; derived evidence comes from sensor_job."""
     with pool.connection() as c, c.cursor() as cur:
@@ -169,7 +170,8 @@ class RainfallIn(BaseModel):
     stream: str = "live"
 
 
-@router.post("/rainfall", status_code=201)
+@router.post("/rainfall", status_code=201,
+             dependencies=[Depends(require_roles("agency"))])
 def rainfall(body: RainfallIn):
     """FR-7: rainfall every 15 minutes, with the derived flow condition (PRD 7.9)."""
     cond = flow_condition(body.mm_per_h)
@@ -192,7 +194,8 @@ class OverflowIn(BaseModel):
     active: bool
 
 
-@router.post("/overflow", status_code=201)
+@router.post("/overflow", status_code=201,
+             dependencies=[Depends(require_roles("agency"))])
 def overflow(body: OverflowIn):
     """FR-8: an overflow activation is both a signal and a piece of evidence."""
     env = EventEnvelope(stream="live", catchment_id=settings.catchment_id,

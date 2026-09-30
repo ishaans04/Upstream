@@ -17,7 +17,7 @@ from __future__ import annotations
 import datetime as dt
 from typing import Literal
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 from upstream_shared.events import EventEnvelope, EventType
 from upstream_shared.ids import zone_group_id
@@ -26,8 +26,11 @@ from ..config import settings
 from ..db import pool
 from ..eventlog import store
 from ..network import get_network
+from ..security import require_roles
 
-router = APIRouter(prefix="/clinical", tags=["clinical"])
+# Only the health zone calls these (GC-7), with a public_health service token.
+router = APIRouter(prefix="/clinical", tags=["clinical"],
+                   dependencies=[Depends(require_roles("public_health"))])
 
 Stream = Literal["live", "sim"]
 

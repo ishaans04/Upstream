@@ -37,6 +37,8 @@ services:
       # `live,sim` also runs the episode lifecycle for the simulator's stream (the demo).
       EPISODE_STREAMS: ${EPISODE_STREAMS:-live}
       CATCHMENT_TZ: ${CATCHMENT_TZ:-Asia/Kolkata}
+      JWT_SIGNING_KEY: ${JWT_SIGNING_KEY}
+      EXPORT_PSEUDONYM_KEY: ${EXPORT_PSEUDONYM_KEY}
     depends_on: { db: { condition: service_healthy } }
     volumes: ["./data:/app/data"]
     ports: ["8000:8000"]
@@ -84,6 +86,8 @@ services:
     environment:
       CLINICAL_DATABASE_URL: ${CLINICAL_DATABASE_URL}
       EPISODE_API_BASE_URL: http://api:8000
+      # A public_health token for the Core API's /clinical routes (Phase 11).
+      CORE_API_TOKEN: ${CLINICAL_CORE_API_TOKEN}
       CLINICAL_DAILY_INTERVAL_S: ${CLINICAL_DAILY_INTERVAL_S:-86400}
     depends_on: { db: { condition: service_healthy } }
     ports: ["8100:8100"]

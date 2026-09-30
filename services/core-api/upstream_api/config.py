@@ -22,6 +22,10 @@ class Settings(BaseSettings):
     episode_streams: str = "live"
     # The catchment's local time zone: the nightly report runs after 02:00 there.
     catchment_tz: str = "Asia/Kolkata"
+    # Phase 11. The MVP's token key (security.py); empty refuses every token.
+    jwt_signing_key: str = ""
+    # Keys the observer pseudonyms in research exports; empty refuses to export.
+    export_pseudonym_key: str = ""
 
     @property
     def episode_stream_list(self) -> list[str]:

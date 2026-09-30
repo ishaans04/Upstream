@@ -10,12 +10,13 @@ from __future__ import annotations
 
 import datetime as dt
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from upstream_shared.events import EventType
 
 from ..config import settings
 from ..db import pool
+from ..security import MaybePrincipal, redact_evidence, require_roles
 from ..workflows.episode import give_signoff, request_signoff
 
 router = APIRouter(tags=["episodes"])
@@ -65,7 +66,7 @@ def list_episodes(stream: str = "live", limit: int = Query(100, ge=1, le=500)):
 
 
 @router.get("/episodes/{episode_id}")
-def get_episode(episode_id: str, stream: str = "live"):
+def get_episode(episode_id: str, principal: MaybePrincipal, stream: str = "live"):
     """One episode with the belief behind it and the evidence it was built from."""
     with pool.connection() as c, c.cursor() as cur:
         cur.execute("""SELECT episode_id, state, stream, opened_at, state_changed_at,
@@ -102,13 +103,15 @@ def get_episode(episode_id: str, stream: str = "live"):
         "probe_candidates": (snap[2] if snap else []) or [],
         "belief_ts": snap[3] if snap else None,
         "evidence": [{"event_id": str(e[0]), "event_type": e[1], "event_time": e[2],
-                      "recorded_at": e[3], "payload": e[4], "seq": e[5]}
+                      "recorded_at": e[3], "payload": redact_evidence(e[4], principal),
+                      "seq": e[5]}
                      for e in evidence],
         "notice": NOT_A_DIAGNOSIS,
     }
 
 
-@router.post("/episodes/{episode_id}/signoff")
+@router.post("/episodes/{episode_id}/signoff",
+             dependencies=[Depends(require_roles("officer"))])
 def signoff(episode_id: str, body: SignoffIn):
     """FR-21. The workflow is the authority; this turns its refusals into status codes."""
     try:
@@ -122,13 +125,30 @@ def signoff(episode_id: str, body: SignoffIn):
     return {"episode_id": episode_id, "state": "CONFIRMED", "officer_id": body.officer_id}
 
 
-@router.post("/episodes/{episode_id}/signoff/request")
+@router.post("/episodes/{episode_id}/signoff/request",
+             dependencies=[Depends(require_roles("officer"))])
 def ask_for_signoff(episode_id: str, body: SignoffRequestIn):
     try:
         request_signoff(episode_id, body.reason)
     except KeyError as e:
         raise HTTPException(404, f"no such episode: {episode_id}") from e
     return {"episode_id": episode_id, "requested": True}
+
+
+@router.get("/evidence/{event_id}")
+def get_evidence(event_id: str, principal: MaybePrincipal):
+    """One observation by id: what an officer checks before a sign-off (FR-21)."""
+    with pool.connection() as c, c.cursor() as cur:
+        cur.execute("""SELECT event_id, event_type, stream, event_time, recorded_at, payload,
+                              seq FROM events
+                       WHERE event_id::text=%s AND catchment_id=%s
+                         AND event_type IN ('EvidenceRecorded','EvidenceRetracted')""",
+                    (event_id, settings.catchment_id))
+        e = cur.fetchone()
+    if e is None:
+        raise HTTPException(404, f"no such evidence: {event_id}")
+    return {"event_id": str(e[0]), "event_type": e[1], "stream": e[2], "event_time": e[3],
+            "recorded_at": e[4], "payload": redact_evidence(e[5], principal), "seq": e[6]}
 
 
 @router.get("/public-health/episodes")

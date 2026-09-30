@@ -69,7 +69,8 @@ def test_the_report_never_attributes_blame(recurring):
 def test_the_nightly_run_records_the_report_once_a_day(recurring, db_conn):
     from upstream_api.api.reports import record_recurring_sources
 
-    day = dt.date(2031, 1, 2)              # a date no other run has used
+    # The log is append-only, so every run needs a date no earlier run has used.
+    day = dt.date(2100, 1, 1) + dt.timedelta(days=uuid.uuid4().int % 300_000)
     first = record_recurring_sources(STREAM, day=day)
     again = record_recurring_sources(STREAM, day=day)
     assert first is True and again is False

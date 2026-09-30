@@ -9,6 +9,25 @@ from upstream_shared.events import EventEnvelope, EventType
 from upstream_shared.evidence import EvidencePayload, ObservationResult
 
 
+@pytest.fixture(autouse=True)
+def _as_admin(request):
+    """Routes behind a role (Phase 11) are exercised here as an admin.
+
+    What each route requires, and that tokens are really checked, is test_security.py's
+    job; it asks for `real_auth` and gets the real dependency.
+    """
+    if "real_auth" in request.fixturenames:
+        yield
+        return
+    from upstream_api.main import app
+    from upstream_api.security import Principal, current_principal
+
+    app.dependency_overrides[current_principal] = lambda: Principal(
+        "test-admin", frozenset({"admin"}))
+    yield
+    app.dependency_overrides.pop(current_principal, None)
+
+
 @pytest.fixture
 def db_conn_factory():
     made = []

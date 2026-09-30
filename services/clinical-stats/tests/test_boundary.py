@@ -71,8 +71,10 @@ def test_the_container_is_given_no_environmental_credential():
     """The check above passes trivially where DATABASE_URL is unset -- which is the
     clinical container. This one reads what the container is actually given.
 
-    Only three variables reach it, none names the environmental database, and it
-    loads no env_file (which would hand it every secret in `.env`).
+    Only four variables reach it, none names the environmental database, and it
+    loads no env_file (which would hand it every secret in `.env`). CORE_API_TOKEN
+    (Phase 11) is an API token whose only role is public_health: it opens the three
+    /clinical routes and nothing else.
     """
     import pathlib
 
@@ -85,7 +87,7 @@ def test_the_container_is_given_no_environmental_credential():
     env = service.get("environment") or {}
     names = set(env) if isinstance(env, dict) else {e.split("=", 1)[0] for e in env}
     assert names <= {"CLINICAL_DATABASE_URL", "EPISODE_API_BASE_URL",
-                     "CLINICAL_DAILY_INTERVAL_S"}
+                     "CLINICAL_DAILY_INTERVAL_S", "CORE_API_TOKEN"}
     values = " ".join(str(v) for v in (env.values() if isinstance(env, dict) else env))
     assert "DATABASE_URL}" not in values.replace("CLINICAL_DATABASE_URL}", "")
     assert "/upstream" not in values
