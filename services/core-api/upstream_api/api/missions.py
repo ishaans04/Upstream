@@ -15,6 +15,7 @@ from ..workflows.missions import (
     accept_mission,
     complete_mission,
     decline_mission,
+    get_mission,
     get_mission_feedback,
 )
 
@@ -42,6 +43,23 @@ def my_missions(volunteer_id: str, include_closed: bool = False):
     with pool.connection() as c, c.cursor() as cur:
         cur.execute(sql + " ORDER BY window_start", args)
         return [dict(zip(_COLS, r, strict=True)) for r in cur.fetchall()]
+
+
+@router.get("/{mission_id}")
+def one_mission(mission_id: str):
+    try:
+        return get_mission(mission_id)
+    except KeyError as e:
+        raise HTTPException(404, f"no such mission: {mission_id}") from e
+
+
+@router.get("/{mission_id}/feedback")
+def feedback(mission_id: str):
+    """The measured effect, again: the phone may have been offline when it completed."""
+    try:
+        return get_mission_feedback(mission_id)
+    except KeyError as e:
+        raise HTTPException(404, f"no such mission: {mission_id}") from e
 
 
 @router.post("/{mission_id}/accept")

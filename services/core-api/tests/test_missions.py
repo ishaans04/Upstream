@@ -166,6 +166,62 @@ def test_volunteer_sees_the_measured_effect_of_their_contribution(
     assert fb["realised_gain"] > 0, "a negative check upstream must shrink the hypothesis set"
 
 
+def test_the_effect_is_measured_when_the_belief_arrives_after_completion(
+        an_episode, candidates, a_volunteer, seed_snapshot, post_evidence, _network,
+        mission_row):
+    """The phone completes the mission the moment the reading is stored; the kernel
+    writes the belief that includes it seconds later. Freezing the gain at completion
+    froze it as unknown, forever, on every real mission."""
+    from upstream_api.workflows.missions import (
+        accept_mission,
+        complete_mission,
+        create_missions_from_probe,
+        get_mission_feedback,
+        measure_pending_effects,
+    )
+
+    a_volunteer("vol-1")
+    m = create_missions_from_probe(an_episode, candidates(1))[0]
+    accept_mission(m.mission_id, "vol-1")
+    entries = _network.entry_nodes[:3]
+    seed_snapshot({"__none__": 0.25, **{e: 0.25 for e in entries}}, as_of_seq=1)
+    eid = post_evidence("negative", node_id=m.node_id)
+    complete_mission(m.mission_id, eid)                       # before the kernel caught up
+    pending = get_mission_feedback(m.mission_id)
+    assert pending["status"] == "completed" and pending["realised_gain"] is None
+    assert "not been completed" not in pending["effect"]
+    assert "recomputed" in pending["effect"]
+
+    seed_snapshot({"__none__": 0.05, entries[0]: 0.95}, as_of_seq=10**9)
+    assert m.mission_id in measure_pending_effects(stream="sim")
+    fb = get_mission_feedback(m.mission_id)
+    assert fb["realised_gain"] > 0 and "ruled out" in fb["effect"]
+    assert fb["sources_before"] == 3 and fb["sources_after"] == 1
+    assert mission_row(m.mission_id)["realised_gain"] == fb["realised_gain"]
+    assert m.mission_id not in measure_pending_effects(stream="sim"), "measured once"
+
+
+def test_reading_the_feedback_measures_a_pending_effect(
+        an_episode, candidates, a_volunteer, seed_snapshot, post_evidence, _network):
+    """The phone asks again after reconnecting; it must not wait for the next sweep."""
+    from upstream_api.workflows.missions import (
+        accept_mission,
+        complete_mission,
+        create_missions_from_probe,
+        get_mission_feedback,
+    )
+
+    a_volunteer("vol-1")
+    m = create_missions_from_probe(an_episode, candidates(1))[0]
+    accept_mission(m.mission_id, "vol-1")
+    entries = _network.entry_nodes[:3]
+    seed_snapshot({"__none__": 0.25, **{e: 0.25 for e in entries}}, as_of_seq=1)
+    eid = post_evidence("negative", node_id=m.node_id)
+    complete_mission(m.mission_id, eid)
+    seed_snapshot({"__none__": 0.05, entries[0]: 0.95}, as_of_seq=10**9)
+    assert "ruled out" in get_mission_feedback(m.mission_id)["effect"]
+
+
 def test_a_contribution_that_widened_the_field_is_not_reported_as_ruling_anything_out(
         an_episode, candidates, a_volunteer, seed_snapshot, post_evidence, _network):
     """Honesty over flattery: belief that spread out must not read as progress."""

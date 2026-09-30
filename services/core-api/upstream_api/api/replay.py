@@ -39,10 +39,18 @@ def replay(at: dt.datetime, stream: str = "live"):
 
 
 @router.get("/replay/timeline")
-def timeline(stream: str = "live", limit: int = Query(500, ge=1, le=5000)):
-    """Every snapshot's moment and headline probability: the Phase 10 slider's track."""
+def timeline(stream: str = "live", since: dt.datetime | None = None,
+             limit: int = Query(500, ge=1, le=5000)):
+    """Every snapshot's moment and headline probability: the Phase 10 slider's track.
+
+    `since` starts the track at an episode. Oldest-first with a limit would otherwise
+    never reach today on a stream that has been running for months.
+    """
     with pool.connection() as c, c.cursor() as cur:
-        cur.execute("""SELECT ts, p_event, fingerprint FROM posterior_snapshots
-                       WHERE catchment_id=%s AND stream=%s ORDER BY ts LIMIT %s""",
-                    (settings.catchment_id, stream, limit))
-        return [{"ts": r[0], "p_event": r[1], "fingerprint": r[2]} for r in cur.fetchall()]
+        cur.execute("""SELECT ts, p_event, fingerprint, as_of_seq FROM posterior_snapshots
+                       WHERE catchment_id=%s AND stream=%s AND ts >= %s
+                       ORDER BY ts LIMIT %s""",
+                    (settings.catchment_id, stream,
+                     since or dt.datetime(1970, 1, 1, tzinfo=dt.UTC), limit))
+        return [{"ts": r[0], "p_event": r[1], "fingerprint": r[2], "as_of_seq": r[3]}
+                for r in cur.fetchall()]

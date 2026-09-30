@@ -91,6 +91,25 @@ def test_safety_blocks_missions_after_dark(ctx):
                  now=night) == []
 
 
+def test_daylight_is_judged_in_the_catchments_own_time_zone():
+    """Delhi is UTC+5:30. Judged in UTC, a 07:00-20:00 gate would send volunteers to a
+    drain bank at 01:00 at night and refuse them at 09:00 in the morning."""
+    evening_utc = dt.datetime(2026, 9, 22, 16, 0, tzinfo=dt.UTC)      # 21:30 in Delhi
+    morning_utc = dt.datetime(2026, 9, 22, 3, 0, tzinfo=dt.UTC)       # 08:30 in Delhi
+    kw = {"flow_condition": "wet", "flood_warning": False, "node_attrs": {}}
+    assert not mission_allowed(now=evening_utc, local_tz="Asia/Kolkata", **kw)[0]
+    assert mission_allowed(now=morning_utc, local_tz="Asia/Kolkata", **kw)[0]
+    # The same moments judged in UTC give the opposite answers: the bug being fixed.
+    assert mission_allowed(now=evening_utc, **kw)[0]
+    assert not mission_allowed(now=morning_utc, **kw)[0]
+
+
+def test_probe_passes_the_time_zone_to_the_gate(ctx):
+    night_in_delhi = dt.datetime(2026, 9, 22, 17, 0, tzinfo=dt.UTC)   # 22:30 IST
+    assert probe(ctx["post"], ctx["net"], ctx["tables"], ctx["params"], ctx["zones"],
+                 now=night_in_delhi, local_tz="Asia/Kolkata") == []
+
+
 def test_safety_blocks_a_node_without_public_access():
     ok, why = mission_allowed(now=NOW, flow_condition="wet", flood_warning=False,
                               node_attrs={"public_access": False})

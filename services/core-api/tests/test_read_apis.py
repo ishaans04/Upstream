@@ -204,7 +204,11 @@ def test_public_health_view_names_no_person_and_no_polluter(an_episode, seed_sna
     for ep in body["episodes"]:
         assert "top_sources" not in ep and "source_marginals" not in ep
         assert set(ep) <= {"episode_id", "state", "opened_at", "clinical_window_end",
-                           "zone_windows", "pathways", "notice"}
+                           "zone_windows", "pathways", "clinical_results", "notice"}
+        # FR-39 shows ClinicalTestResults, but only what crossed the boundary (FR-34).
+        for result in ep["clinical_results"]:
+            assert set(result) <= {"area_code", "syndrome", "method", "p_value",
+                                   "effect_size", "n_days", "computed_at"}
 
 
 def test_public_health_view_reports_exposure_windows(an_episode, emit_posterior):

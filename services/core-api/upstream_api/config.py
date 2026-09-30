@@ -17,6 +17,17 @@ class Settings(BaseSettings):
     snap_max_distance_m: float = 150.0
     network_artifact: str = "data/artifacts/network.npz"
     tables_artifact: str = "data/artifacts/tables.npz"
+    # Streams whose posteriors open episodes and whose timers run. `live` always; add
+    # `sim` to drive a simulated incident through the real lifecycle (the demo).
+    episode_streams: str = "live"
+
+    @property
+    def episode_stream_list(self) -> list[str]:
+        streams = [s.strip() for s in self.episode_streams.split(",") if s.strip()]
+        unknown = set(streams) - {"live", "sim"}
+        if unknown:
+            raise ValueError(f"EPISODE_STREAMS names unknown streams: {sorted(unknown)}")
+        return streams or ["live"]
 
     # Real environment variables win over .env, which is what lets the host test run
     # point DATABASE_URL at localhost while .env keeps the in-compose db:5432 value.

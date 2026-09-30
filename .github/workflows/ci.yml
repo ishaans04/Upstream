@@ -108,6 +108,27 @@ jobs:
         if: always()
         with: { name: validation-report, path: fhir/validation-report.json }
 
+  # Phase 10: the web app. Unit tests include the axe checks (GC-14) on the console,
+  # mission and public-health components; the typecheck runs against the client
+  # generated from the API's own OpenAPI schema, so a renamed field fails here. The
+  # Playwright e2e suite needs a running stack and a demo incident, so it runs locally
+  # (`make web-e2e`), not in CI.
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run: { working-directory: web }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
   # FR-44 / FR-45: the benchmark runs on every change and blocks one that degrades
   # calibration. It runs on the real catchment (bench/fixtures holds the compiled
   # network) with tables built from the kernel's current parameters, and is judged

@@ -55,8 +55,10 @@ StoredRow = namedtuple("StoredRow", "seq event_id event_type event_time payload"
 
 
 class KernelWorker:
-    def __init__(self, dsn: str, catchment_id: str, stream: str = "live"):
+    def __init__(self, dsn: str, catchment_id: str, stream: str = "live",
+                 local_tz: str = "UTC"):
         self.dsn, self.catchment_id, self.stream = dsn, catchment_id, stream
+        self.local_tz = local_tz                  # the daylight gate is local (safety.py)
         self.net = load_network(os.environ.get("NETWORK_ARTIFACT", "data/artifacts/network.npz"))
         self.tables = load_tables(os.environ.get("TABLES_ARTIFACT", "data/artifacts/tables.npz"))
         self.params = default_params()
@@ -119,7 +121,8 @@ class KernelWorker:
         # high flow (PRD 7.5), and that gate is only meaningful if it sees the weather.
         candidates = probe(post, self.net, self.tables, self.params, zones,
                            now=dt.datetime.now(dt.UTC),
-                           flow_condition=FLOW_CONDITIONS[flow_idx])
+                           flow_condition=FLOW_CONDITIONS[flow_idx],
+                           local_tz=self.local_tz)
         ex = explain(post, obs, self.net, grid, self.tables, self.params)
         lo, hi = start_time_credible_interval(post, self.net)
         return post, {"zones": zones, "probe": candidates, "explanation": ex,
@@ -214,7 +217,11 @@ class KernelWorker:
 
 def main() -> None:
     logging.basicConfig(level=logging.INFO)
-    KernelWorker(os.environ["KERNEL_DATABASE_URL"], os.environ["CATCHMENT_ID"]).run()
+    # KERNEL_STREAM=sim runs a second worker for the simulator's stream (the demo);
+    # each keeps its own cursor, so the two never move each other's position.
+    KernelWorker(os.environ["KERNEL_DATABASE_URL"], os.environ["CATCHMENT_ID"],
+                 stream=os.environ.get("KERNEL_STREAM", "live"),
+                 local_tz=os.environ.get("CATCHMENT_TZ", "UTC")).run()
 
 
 if __name__ == "__main__":

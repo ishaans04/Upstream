@@ -80,7 +80,7 @@ def probe(post, net, tables, params, zones, *, now: dt.datetime,
           mode: ProbeMode = ProbeMode.PROTECT, max_candidates: int = 5,
           reachable_within_s: float = 1800, flood_warning: bool = False,
           flow_condition: str = "wet", origin_node: str | None = None,
-          method: str = "citizen_visual_olfactory") -> list[dict]:
+          method: str = "citizen_visual_olfactory", local_tz: str = "UTC") -> list[dict]:
     """Rank where to look next by EC2 gain per walking second.
 
     `method` is what the volunteer will do there. EC2 scores a candidate by how its
@@ -90,7 +90,8 @@ def probe(post, net, tables, params, zones, *, now: dt.datetime,
     method a mission may use, which never overstates a candidate.
     """
     ok, _reason = mission_allowed(now=now, flow_condition=flow_condition,
-                                  flood_warning=flood_warning, node_attrs={})
+                                  flood_warning=flood_warning, node_attrs={},
+                                  local_tz=local_tz)
     if not ok:
         return []
 

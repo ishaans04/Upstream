@@ -67,7 +67,11 @@ def create_missions_from_probe(episode_id: str, candidates: list[dict]) -> list[
             event_type=EventType.MISSION_CREATED, event_time=dt.datetime.now(dt.UTC),
             payload={"mission_id": mission_id, "episode_id": episode_id,
                      "node_id": c["node_id"], "assignee": vol_id,
-                     "expected_gain": float(c["ec2_gain"])}))
+                     "expected_gain": float(c["ec2_gain"]),
+                     # What the volunteer is shown before accepting (G7). Kept on the
+                     # event because PROBE's wording is not a column of the mission.
+                     "expected_effect": c.get("expected_effect", ""),
+                     "walk_cost_s": c.get("walk_cost_s"), "summary": summary}))
         send_push(vol_id, "Upstream mission nearby", summary, f"/missions/{mission_id}")
         timers.start(mission_deadline_workflow, mission_id)
         specs.append(spec)
@@ -335,19 +339,73 @@ def get_mission_feedback(mission_id: str) -> dict:
     means nothing.
     """
     m = _mission(mission_id)
+    if m["status"] == MissionStatus.COMPLETED.value and m["realised_gain"] is None:
+        # The phone asks again on reconnect; it should not wait for the next sweep.
+        _measure_effect(mission_id)
+        m = _mission(mission_id)
     counts = _completion_counts(mission_id)
     return {"mission_id": mission_id, "status": m["status"],
             "realised_gain": m["realised_gain"], "measures": MEASURES,
             "sources_before": counts[0], "sources_after": counts[1],
-            "effect": _effect_sentence(m["realised_gain"], *counts)}
+            "effect": _effect_sentence(m["status"], m["realised_gain"], *counts)}
 
 
-def _effect_sentence(gain: float | None, n_before: int | None, n_after: int | None) -> str:
-    """Built from the numbers frozen at completion, never recomputed from live belief."""
-    if gain is None:
+def measure_pending_effects(*, stream: str) -> list[str]:
+    """Measure every completed mission on this stream whose effect is still unknown.
+
+    Completion usually arrives before the belief that includes the reading: the phone
+    completes the moment its reading is stored, and the kernel recomputes a few
+    seconds later. The gain is measured once that belief exists, and frozen.
+    """
+    with pool.connection() as c, c.cursor() as cur:
+        cur.execute("""SELECT m.mission_id FROM missions m
+                       JOIN episodes e ON e.episode_id = m.episode_id
+                       WHERE m.status=%s AND m.realised_gain IS NULL
+                         AND e.catchment_id=%s AND e.stream=%s ORDER BY m.mission_id""",
+                    (MissionStatus.COMPLETED.value, settings.catchment_id, stream))
+        pending = [r[0] for r in cur.fetchall()]
+    return [mid for mid in pending if _measure_effect(mid)]
+
+
+def _measure_effect(mission_id: str) -> bool:
+    """Freeze one completed mission's effect if both beliefs exist. True if it did."""
+    with pool.connection() as c, c.cursor() as cur:
+        cur.execute("""SELECT payload->>'evidence_event_id' FROM events
+                       WHERE event_type=%s AND payload->>'mission_id'=%s
+                       ORDER BY seq LIMIT 1""",
+                    (EventType.MISSION_COMPLETED.value, mission_id))
+        row = cur.fetchone()
+    if not row or not row[0]:
+        return False
+    before, after = _snapshots_around(row[0])
+    if before is None or after is None:
+        return False
+    realised = decision_uncertainty(before) - decision_uncertainty(after)
+    with pool.connection() as c, c.cursor() as cur:
+        # Conditional, so the sweep and a feedback read racing cannot both append.
+        cur.execute("""UPDATE missions SET realised_gain=%s
+                       WHERE mission_id=%s AND realised_gain IS NULL""",
+                    (realised, mission_id))
+        won = cur.rowcount == 1
+    if won:
+        m = _mission(mission_id)
+        store.append(EventEnvelope(
+            stream=_stream_for(m["episode_id"]), catchment_id=settings.catchment_id,
+            event_type=EventType.MISSION_EFFECT_MEASURED,
+            event_time=dt.datetime.now(dt.UTC),
+            payload={"mission_id": mission_id, "evidence_event_id": row[0],
+                     "realised_gain": realised, "sources_before": _live_sources(before),
+                     "sources_after": _live_sources(after)}))
+    return won
+
+
+def _effect_sentence(status: str, gain: float | None, n_before: int | None,
+                     n_after: int | None) -> str:
+    """Built from the numbers frozen when measured, never recomputed from live belief."""
+    if status != MissionStatus.COMPLETED.value:
         return "This mission has not been completed yet."
-    if n_before is None or n_after is None:
-        return "Recorded. The effect will be measurable once belief is recomputed."
+    if gain is None or n_before is None or n_after is None:
+        return "Recorded. The effect will show once the belief has been recomputed with it."
     if gain <= 0:
         return ("Recorded, and it widened the field rather than narrowing it: "
                 f"{n_after} possible sources are still in play, against {n_before} before. "
@@ -408,12 +466,13 @@ def _snapshots_around(evidence_event_id: str) -> tuple[dict | None, dict | None]
 
 
 def _completion_counts(mission_id: str) -> tuple[int | None, int | None]:
-    """The live-source counts recorded when the mission was completed."""
+    """The live-source counts frozen at completion, or when the effect was measured."""
     with pool.connection() as c, c.cursor() as cur:
         cur.execute("""SELECT payload FROM events
-                       WHERE event_type=%s AND payload->>'mission_id'=%s
+                       WHERE event_type = ANY(%s) AND payload->>'mission_id'=%s
                        ORDER BY seq DESC LIMIT 1""",
-                    (EventType.MISSION_COMPLETED.value, mission_id))
+                    ([EventType.MISSION_COMPLETED.value,
+                      EventType.MISSION_EFFECT_MEASURED.value], mission_id))
         row = cur.fetchone()
     if not row:
         return None, None
@@ -437,6 +496,34 @@ def _latest_probe_candidates(stream: str) -> list[dict]:
 
 
 # --------------------------------------------------------------------------- reads
+
+
+def get_mission(mission_id: str) -> dict:
+    """One mission as the volunteer's phone shows it (FR-38).
+
+    The node is resolved to a coordinate here, because the phone has no network model
+    and a mission without a place to go is not a mission.
+    """
+    m = _mission(mission_id)
+    with pool.connection() as c, c.cursor() as cur:
+        cur.execute("""SELECT payload FROM events
+                       WHERE event_type=%s AND payload->>'mission_id'=%s
+                       ORDER BY seq LIMIT 1""",
+                    (EventType.MISSION_CREATED.value, mission_id))
+        row = cur.fetchone()
+    created = row[0] if row else {}
+    net = get_network()
+    idx = net.node_index.get(m["node_id"])
+    lon, lat = ((float(net.lonlat[idx][0]), float(net.lonlat[idx][1]))
+                if idx is not None else (None, None))
+    return {**{k: m[k] for k in ("mission_id", "episode_id", "node_id", "window_start",
+                                 "window_end", "methods", "mode", "status", "assignee_id",
+                                 "realised_gain")},
+            "stream": _stream_for(m["episode_id"]),
+            "expected_effect": created.get("expected_effect") or "",
+            "walk_cost_s": created.get("walk_cost_s"),
+            "summary": created.get("summary") or "",
+            "lon": lon, "lat": lat}
 
 
 def _mission(mission_id: str) -> dict:

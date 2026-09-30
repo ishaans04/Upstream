@@ -12,8 +12,10 @@ from __future__ import annotations
 import datetime as dt
 import uuid
 
+import psycopg
 from fastapi import APIRouter, HTTPException
 from fastapi.encoders import jsonable_encoder
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ValidationError
 from upstream_shared.codes import ObservationMethod
 from upstream_shared.events import EventEnvelope, EventType
@@ -51,6 +53,9 @@ class ConfirmIn(BaseModel):
     confirmed_by_observer: bool = False
     photo_uri: str | None = None
     mission_id: str | None = None
+    # NFR-9: generated on the phone when the observation is made, and sent unchanged on
+    # every retry. It becomes the event id, so a second arrival finds the first.
+    idempotency_key: uuid.UUID | None = None
 
 
 class LabIn(BaseModel):
@@ -214,23 +219,72 @@ def flow_condition(mm_per_h: float) -> str:
     return "dry"
 
 
-def _append_evidence(body: ConfirmIn) -> dict:
+def _append_evidence(body: ConfirmIn):
     """Append confirmed evidence and return both of its identities.
 
     The sequence number orders the log; the event id is what everything downstream
     refers to a single observation by. Officer sign-off (FR-21) needs the id, so
     returning only the seq made the documented workflow impossible to perform from
     the API.
+
+    Evidence gathered on a mission goes to that mission's stream: a simulated
+    episode's volunteer must not write into the live log (GC-10).
     """
     try:
-        payload = EvidencePayload(**body.model_dump(exclude={"observed_at"}))
+        payload = EvidencePayload(**body.model_dump(exclude={"observed_at",
+                                                              "idempotency_key"}))
     except ValidationError as e:
         raise HTTPException(422, _validation_detail(e)) from e
+    stream = _mission_stream(body.mission_id) if body.mission_id else "live"
     try:
-        env = EventEnvelope(stream="live", catchment_id=settings.catchment_id,
+        env = EventEnvelope(stream=stream, catchment_id=settings.catchment_id,
                             event_type=EventType.EVIDENCE_RECORDED,
                             event_time=body.observed_at,
-                            payload=payload.model_dump(mode="json"))
+                            payload=payload.model_dump(mode="json"),
+                            **({"event_id": body.idempotency_key}
+                               if body.idempotency_key else {}))
     except ValidationError as e:
         raise HTTPException(422, _validation_detail(e)) from e
-    return {"seq": store.append(env), "event_id": str(env.event_id)}
+    if body.idempotency_key:
+        earlier = _already_recorded(env)
+        if earlier is not None:
+            return earlier
+    try:
+        seq = store.append(env)
+    except psycopg.errors.UniqueViolation:
+        # Two retries raced past the check above; the loser answers like a retry.
+        earlier = _already_recorded(env)
+        if earlier is None:
+            raise
+        return earlier
+    return {"seq": seq, "event_id": str(env.event_id)}
+
+
+def _already_recorded(env: EventEnvelope) -> JSONResponse | None:
+    """The first arrival of a retried submission, or None if this is the first.
+
+    A key that comes back with a different observation is refused rather than
+    answered with the old one: returning success would tell the phone its new
+    reading was stored when it was not.
+    """
+    with pool.connection() as c, c.cursor() as cur:
+        cur.execute("SELECT seq, event_time, payload FROM events WHERE event_id=%s",
+                    (env.event_id,))
+        row = cur.fetchone()
+    if row is None:
+        return None
+    seq, event_time, payload = row
+    if event_time != env.event_time or payload != env.payload:
+        raise HTTPException(409, "this idempotency key was already used for a "
+                                 "different observation")
+    return JSONResponse({"seq": seq, "event_id": str(env.event_id)}, status_code=200)
+
+
+def _mission_stream(mission_id: str) -> str:
+    with pool.connection() as c, c.cursor() as cur:
+        cur.execute("""SELECT e.stream FROM missions m JOIN episodes e USING (episode_id)
+                       WHERE m.mission_id=%s""", (mission_id,))
+        row = cur.fetchone()
+    if row is None:
+        raise HTTPException(404, f"no such mission: {mission_id}")
+    return row[0]

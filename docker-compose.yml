@@ -34,6 +34,8 @@ services:
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY}
       VAPID_SUBJECT: ${VAPID_SUBJECT}
       OPEN_METEO_BASE_URL: ${OPEN_METEO_BASE_URL}
+      # `live,sim` also runs the episode lifecycle for the simulator's stream (the demo).
+      EPISODE_STREAMS: ${EPISODE_STREAMS:-live}
     depends_on: { db: { condition: service_healthy } }
     volumes: ["./data:/app/data"]
     ports: ["8000:8000"]
@@ -50,8 +52,27 @@ services:
       # needs the app connection. Nothing in the worker path may use this.
       DATABASE_URL: ${DATABASE_URL}
       CATCHMENT_ID: ${CATCHMENT_ID}
+      # The daylight gate on missions is local time (PRD 7.5, safety.py).
+      CATCHMENT_TZ: ${CATCHMENT_TZ:-Asia/Kolkata}
       JAX_PLATFORMS: cpu
       JAX_ENABLE_X64: "1"                          # GC-6 determinism + numeric headroom
+      XLA_FLAGS: "--xla_cpu_enable_fast_math=false"
+    depends_on: { db: { condition: service_healthy } }
+    volumes: ["./data:/app/data"]
+
+  kernel-sim:
+    # A second worker on the simulator's stream, for the demo (`make demo`). It keeps its
+    # own cursor (kernel:<catchment>:sim), so it never moves the live worker's position.
+    profiles: ["demo"]
+    build: { context: ., dockerfile: docker/Dockerfile.python, args: { SERVICE: kernel } }
+    command: python -m upstream_kernel.worker
+    environment:
+      KERNEL_DATABASE_URL: ${KERNEL_DATABASE_URL}
+      CATCHMENT_ID: ${CATCHMENT_ID}
+      CATCHMENT_TZ: ${CATCHMENT_TZ:-Asia/Kolkata}
+      KERNEL_STREAM: sim
+      JAX_PLATFORMS: cpu
+      JAX_ENABLE_X64: "1"
       XLA_FLAGS: "--xla_cpu_enable_fast_math=false"
     depends_on: { db: { condition: service_healthy } }
     volumes: ["./data:/app/data"]
@@ -123,13 +144,15 @@ services:
     ports: ["9000:9000", "9001:9001"]
 
   web:
-    # Built in Phase 10. Behind a profile until then so `make up` works.
-    profiles: ["web"]
-    build: { context: ./web, dockerfile: ../docker/Dockerfile.web }
-    environment:
-      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
-      NEXT_PUBLIC_MAPTILER_KEY: ${NEXT_PUBLIC_MAPTILER_KEY}
-      NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
+    build:
+      context: ./web
+      dockerfile: ../docker/Dockerfile.web
+      args:
+        CORE_API_URL: http://api:8000
+        # `sim` shows the simulated incident (the demo); `live` the real stream.
+        NEXT_PUBLIC_STREAM: ${WEB_STREAM:-live}
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
+        NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
     depends_on: [api]
     ports: ["3000:3000"]
 

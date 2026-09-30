@@ -12,6 +12,7 @@ import datetime as dt
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
+from upstream_shared.events import EventType
 
 from ..config import settings
 from ..db import pool
@@ -28,6 +29,8 @@ EVIDENCE_HORIZON_HOURS = 24
 # episodes would be megabytes of it, so the list views carry the window and drop the
 # samples.
 _CURVE_KEYS = ("t_grid", "p_exposed")
+_RESULT_KEYS = ("area_code", "syndrome", "method", "p_value", "effect_size", "n_days",
+                "computed_at")
 
 
 def _summarise_zone_windows(zone_windows: dict) -> dict:
@@ -78,7 +81,7 @@ def get_episode(episode_id: str, stream: str = "live"):
                        FROM posterior_snapshots WHERE catchment_id=%s AND stream=%s
                        ORDER BY ts DESC LIMIT 1""", (settings.catchment_id, row[2]))
         snap = cur.fetchone()
-        cur.execute("""SELECT event_id, event_type, event_time, recorded_at, payload
+        cur.execute("""SELECT event_id, event_type, event_time, recorded_at, payload, seq
                        FROM events WHERE catchment_id=%s AND stream=%s
                          AND event_type IN ('EvidenceRecorded','EvidenceRetracted')
                          AND event_time >= %s ORDER BY seq""",
@@ -99,7 +102,8 @@ def get_episode(episode_id: str, stream: str = "live"):
         "probe_candidates": (snap[2] if snap else []) or [],
         "belief_ts": snap[3] if snap else None,
         "evidence": [{"event_id": str(e[0]), "event_type": e[1], "event_time": e[2],
-                      "recorded_at": e[3], "payload": e[4]} for e in evidence],
+                      "recorded_at": e[3], "payload": e[4], "seq": e[5]}
+                     for e in evidence],
         "notice": NOT_A_DIAGNOSIS,
     }
 
@@ -141,6 +145,16 @@ def public_health_episodes(stream: str = "live", limit: int = Query(100, ge=1, l
                        ORDER BY opened_at DESC LIMIT %s""",
                     (settings.catchment_id, stream, limit))
         rows = cur.fetchall()
+        cur.execute("""SELECT payload FROM events
+                       WHERE catchment_id=%s AND stream=%s AND event_type=%s
+                         AND payload->>'episode_id' = ANY(%s) ORDER BY seq""",
+                    (settings.catchment_id, stream, EventType.CLINICAL_TEST_RESULT.value,
+                     [r[0] for r in rows]))
+        results: dict[str, list[dict]] = {}
+        for (payload,) in cur.fetchall():
+            # Only what crossed the boundary (FR-34): the question and its answer.
+            results.setdefault(payload["episode_id"], []).append(
+                {k: payload.get(k) for k in _RESULT_KEYS})
     episodes = []
     for episode_id, state, opened_at, window_end, summary in rows:
         zone_windows = _summarise_zone_windows((summary or {}).get("zone_windows", {}))
@@ -148,5 +162,7 @@ def public_health_episodes(stream: str = "live", limit: int = Query(100, ge=1, l
                            if isinstance(w, dict) for p in w.get("pathways", [])})
         episodes.append({"episode_id": episode_id, "state": state, "opened_at": opened_at,
                          "clinical_window_end": window_end, "zone_windows": zone_windows,
-                         "pathways": pathways, "notice": NOT_A_DIAGNOSIS})
+                         "pathways": pathways,
+                         "clinical_results": results.get(episode_id, []),
+                         "notice": NOT_A_DIAGNOSIS})
     return {"notice": NOT_A_DIAGNOSIS, "episodes": episodes}

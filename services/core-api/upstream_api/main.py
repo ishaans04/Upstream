@@ -22,6 +22,7 @@ from .ingest.sensor_job import derive_sensor_evidence
 from .network import get_network
 from .workflows import timers
 from .workflows.consumer import process_new_posteriors
+from .workflows.missions import measure_pending_effects
 
 log = logging.getLogger(__name__)
 
@@ -64,17 +65,22 @@ async def _episode_lifecycle_loop():
     """
     next_sweep = 0.0
     while True:
-        try:
-            process_new_posteriors(stream="live")
-        except asyncio.CancelledError:
-            raise
-        except Exception:
-            log.exception("episode consumer pass failed; continuing")     # NFR-8
+        streams = settings.episode_stream_list
+        for stream in streams:
+            try:
+                process_new_posteriors(stream=stream)
+                measure_pending_effects(stream=stream)                    # G7
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                log.exception("episode consumer pass on %s failed; continuing",
+                              stream)                                     # NFR-8
         try:
             now = asyncio.get_running_loop().time()
             if now >= next_sweep:
                 next_sweep = now + TIMER_SWEEP_INTERVAL_S
-                log.info("timer sweep: %s", timers.sweep_due(stream="live"))
+                for stream in streams:
+                    log.info("timer sweep %s: %s", stream, timers.sweep_due(stream=stream))
         except asyncio.CancelledError:
             raise
         except Exception:

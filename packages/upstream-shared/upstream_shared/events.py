@@ -26,6 +26,8 @@ class EventType(StrEnum):
     MISSION_COMPLETED = "MissionCompleted"
     MISSION_EXPIRED = "MissionExpired"
     MISSION_DECLINED = "MissionDeclined"
+    # G7: the realised effect, once the first belief that includes the reading exists.
+    MISSION_EFFECT_MEASURED = "MissionEffectMeasured"
     FHIR_PUBLISHED = "FhirPublished"
     CLINICAL_TEST_RESULT = "ClinicalTestResult"
     UPSTREAM_SEARCH_REQUESTED = "UpstreamSearchRequested"
