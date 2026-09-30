@@ -76,7 +76,8 @@ def published(request, _pool, db_conn_module, store_module, hapi_module):
 
     def purge():
         with db_conn.cursor() as cur:
-            cur.execute("DELETE FROM posterior_snapshots WHERE episode_id=%s", (EPISODE_ID,))
+            cur.execute("DELETE FROM posterior_snapshots WHERE fingerprint=%s",
+                        ("fp-publisher-test",))
             cur.execute("DELETE FROM episodes WHERE episode_id=%s", (EPISODE_ID,))
 
     # Registered, not just called at the end: a fixture that fails partway
@@ -137,7 +138,7 @@ def published(request, _pool, db_conn_module, store_module, hapi_module):
         cur.execute(
             "INSERT INTO episodes (episode_id, catchment_id, stream, state, opened_at, "
             "state_changed_at, est_start_lo, est_start_hi, clinical_window_end, version, "
-            "summary) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+            "summary, latest_fingerprint) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
             (
                 EPISODE_ID,
                 settings.catchment_id,
@@ -150,6 +151,7 @@ def published(request, _pool, db_conn_module, store_module, hapi_module):
                 dt.datetime.now(UTC) + dt.timedelta(days=10),
                 3,
                 Jsonb({}),
+                "fp-publisher-test",
             ),
         )
         cur.execute(
@@ -160,7 +162,9 @@ def published(request, _pool, db_conn_module, store_module, hapi_module):
             (
                 dt.datetime.now(UTC),
                 "fp-publisher-test",
-                EPISODE_ID,
+                # As the kernel writes it: a snapshot belongs to a stream, not an
+                # episode. Seeding this column is what hid the publisher's lookup bug.
+                None,
                 settings.catchment_id,
                 STREAM,
                 as_of_seq,
@@ -347,3 +351,29 @@ def test_an_invalid_resource_is_never_written(hapi):
 
     response = httpx.get(f"{hapi.base}/RiskAssessment/upstream-never-written", timeout=30.0)
     assert response.status_code == 404
+
+
+def test_the_publisher_finds_the_belief_an_episode_holds(db_conn, _pool):
+    """The kernel writes snapshots with no episode id: they belong to a stream. Looking
+    them up by episode id found nothing for any real episode, so no real episode was
+    ever published - only test episodes whose snapshots had the column seeded."""
+    from upstream_api.config import settings
+    from upstream_api.fhir.publisher import _latest_snapshot
+
+    eid, fp = f"EE-P{uuid.uuid4().hex[:5]}", f"sha256:pub-{uuid.uuid4().hex}"
+    with db_conn.cursor() as cur:
+        cur.execute("INSERT INTO posterior_snapshots (ts,fingerprint,episode_id,catchment_id,"
+                    "stream,as_of_seq,network_version,kernel_version,params_version,p_event,"
+                    "source_marginals,zone_windows,probe_candidates,explanation) VALUES "
+                    "(now(),%s,NULL,%s,%s,7,'n','k','p',0.93,'{}','{}','[]','{}')",
+                    (fp, settings.catchment_id, STREAM))
+        cur.execute("INSERT INTO episodes (episode_id,catchment_id,stream,state,opened_at,"
+                    "state_changed_at,latest_fingerprint) VALUES (%s,%s,%s,'PROBABLE',"
+                    "now(),now(),%s)", (eid, settings.catchment_id, STREAM, fp))
+    try:
+        snap = _latest_snapshot(eid, stream=STREAM)
+        assert snap is not None and snap["fingerprint"] == fp and snap["as_of_seq"] == 7
+    finally:
+        with db_conn.cursor() as cur:
+            cur.execute("DELETE FROM episodes WHERE episode_id=%s", (eid,))
+            cur.execute("DELETE FROM posterior_snapshots WHERE fingerprint=%s", (fp,))

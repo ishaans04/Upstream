@@ -163,11 +163,20 @@ _SNAPSHOT_COLS = (
 
 
 def _latest_snapshot(episode_id: str, *, stream: str) -> dict | None:
+    """The belief the episode holds: the snapshot its `latest_fingerprint` names.
+
+    The kernel writes snapshots per stream with no episode id (it cannot write
+    episodes, PRD 10.3), so the episode row is what ties the two together. Looking
+    snapshots up by episode id found nothing for any real episode.
+    """
+    cols = ",".join(f"s.{c}" for c in _SNAPSHOT_COLS)
     with pool.connection() as c, c.cursor() as cur:
         cur.execute(
-            f"SELECT {','.join(_SNAPSHOT_COLS)} FROM posterior_snapshots "
-            "WHERE episode_id=%s AND catchment_id=%s AND stream=%s "
-            "ORDER BY ts DESC LIMIT 1",
+            f"SELECT {cols} FROM episodes e JOIN posterior_snapshots s "
+            "ON s.fingerprint = e.latest_fingerprint AND s.catchment_id = e.catchment_id "
+            "AND s.stream = e.stream "
+            "WHERE e.episode_id=%s AND e.catchment_id=%s AND e.stream=%s "
+            "ORDER BY s.ts DESC LIMIT 1",
             (episode_id, settings.catchment_id, stream),
         )
         row = cur.fetchone()
