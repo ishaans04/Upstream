@@ -156,7 +156,8 @@ services:
         CORE_API_URL: http://api:8000
         # `sim` shows the simulated incident (the demo); `live` the real stream.
         NEXT_PUBLIC_STREAM: ${WEB_STREAM:-live}
-        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
+        # No NEXT_PUBLIC_API_BASE_URL here: the browser reaches the API through this
+        # container's own /api/core, and an absolute URL makes every call cross-origin.
         NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
     depends_on: [api]
     ports: ["3000:3000"]
