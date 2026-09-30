@@ -48,12 +48,18 @@ def recurring(db_conn, _network):
                     ([m[1] for m in made],))
 
 
-def test_the_report_names_a_place_to_inspect(recurring):
+def test_the_report_names_a_place_to_inspect(recurring, db_conn, _network):
     body = client.get("/reports/recurring-sources", params={"stream": STREAM}).json()
     top = body["sources"][0]
     assert top["node_id"] == recurring
     assert top["episode_count"] >= 3 and top["pooled_probability"] > 0.5
-    assert top["outfall_id"].startswith("O") and top["is_synthetic"] is True
+    # The outfall's own id and synthetic flag (on the Delhi network "O10"; on CI's
+    # synthetic line network the outfall id is the node id).
+    with db_conn.cursor() as cur:
+        cur.execute("SELECT outfall_id, is_synthetic FROM outfalls "
+                    "WHERE node_id=%s AND network_version=%s", (recurring, _network.version))
+        outfall_id, synthetic = cur.fetchone()
+    assert (top["outfall_id"], top["is_synthetic"]) == (outfall_id, synthetic)
     # The public label, not the internal node id, in the sentence an officer reads.
     assert top["outfall_id"] in top["suggested_action"]
     assert "inspect" in top["suggested_action"].lower()
