@@ -291,7 +291,7 @@ def evidence_to_observation(ev, *, retracted: bool) -> dict:
             {
                 "url": f"{SD}/upstream-ai-assisted",
                 "extension": [
-                    {"url": "modelId", "valueString": p.get("ai_model", "claude-opus-5")},
+                    {"url": "modelId", "valueString": p.get("ai_model", "openai/gpt-oss-120b")},
                     {
                         "url": "confirmedByObserver",
                         "valueBoolean": bool(p.get("confirmed_by_observer")),

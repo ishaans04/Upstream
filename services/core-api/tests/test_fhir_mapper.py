@@ -307,12 +307,12 @@ def test_lab_value_uses_ucum():
 def test_ai_assisted_evidence_publishes_the_model_and_the_confirmation():
     """GC-8: the model proposed, the citizen confirmed, and both are on the record."""
     obs = evidence_to_observation(
-        _event(ai_assisted=True, confirmed_by_observer=True, ai_model="claude-opus-5"),
+        _event(ai_assisted=True, confirmed_by_observer=True, ai_model="openai/gpt-oss-120b"),
         retracted=False,
     )
     ext = next(e for e in obs["extension"] if e["url"].endswith("upstream-ai-assisted"))
     fields = {s["url"]: s for s in ext["extension"]}
-    assert fields["modelId"]["valueString"] == "claude-opus-5"
+    assert fields["modelId"]["valueString"] == "openai/gpt-oss-120b"
     assert fields["confirmedByObserver"]["valueBoolean"] is True
 
 

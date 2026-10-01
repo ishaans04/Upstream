@@ -98,10 +98,11 @@ confirmation.
 
 ## Software limits of this version
 
-- **The AI normaliser's live path has never run.** No `ANTHROPIC_API_KEY` was available,
-  so the deterministic `StubNormaliser` handled every report. `ClaudeNormaliser` is
-  written against the official SDK with a fixed output schema, and it switches on when a
-  key is set, but it has not been exercised against the model.
+- **The AI normaliser has had only a smoke test.** `GroqNormaliser` uses Groq's official
+  SDK with a fixed output schema (model `openai/gpt-oss-120b`, text only) and switches on
+  when `GROQ_API_KEY` is set; without it the deterministic `StubNormaliser` handles every
+  report, which is also what CI uses. Live calls have been checked on a handful of
+  reports, not evaluated at scale.
 - **Access control is MVP-grade:** static signed tokens rather than Keycloak, and citizen
   actions are unauthenticated. See [SECURITY.md](SECURITY.md).
 - **Photos are not screened** for faces or number plates. They are withheld from every

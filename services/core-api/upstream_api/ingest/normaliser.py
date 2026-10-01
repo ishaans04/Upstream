@@ -1,12 +1,12 @@
 """AI normaliser - GC-8: proposes structured fields, never decides anything.
 
-The model output is schema-constrained with the Anthropic SDK's `messages.parse`, so the
-result is a validated Pydantic object or an exception, never free-form prose we have to
-guess at. The citizen confirms every field before an EvidenceRecorded event is appended.
+The model runs on Groq through its official SDK. Its output is constrained to the
+NormalisedReport JSON schema and then validated by Pydantic, so the result is a validated
+object or an exception, never free-form prose we have to guess at. The citizen confirms
+every field before an EvidenceRecorded event is appended.
 """
 from __future__ import annotations
 
-import base64
 from typing import Protocol
 
 from pydantic import BaseModel, Field
@@ -49,32 +49,31 @@ class Normaliser(Protocol):
                 photo_media_type: str | None) -> NormalisedReport: ...
 
 
-class ClaudeNormaliser:
-    MODEL = "claude-opus-5"
+# Pinned (GC-6): the published FHIR record names this model on every AI-assisted
+# observation, so a silent upgrade would make the record wrong.
+GROQ_MODEL = "openai/gpt-oss-120b"
+
+
+class GroqNormaliser:
+    MODEL = GROQ_MODEL
 
     def __init__(self) -> None:
-        import anthropic
+        import groq
 
-        self._client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+        self._client = groq.Groq(api_key=settings.groq_api_key)
 
     def propose(self, free_text, photo_bytes=None, photo_media_type=None) -> NormalisedReport:
-        content: list[dict] = []
-        if photo_bytes:
-            content.append({"type": "image", "source": {
-                "type": "base64", "media_type": photo_media_type or "image/jpeg",
-                "data": base64.b64encode(photo_bytes).decode()}})
-        content.append({"type": "text", "text": free_text or "(photo only, no text)"})
-        resp = self._client.messages.parse(
+        # The model is text-only. Photos are stored with the report but not read here;
+        # the citizen describes what they saw and confirms the fields either way.
+        resp = self._client.chat.completions.create(
             model=self.MODEL,
-            # Thinking is on by default for this model, and its tokens come out of
-            # max_tokens. A small ceiling here truncates the structured output rather
-            # than producing a short one.
-            max_tokens=16000,
-            system=SYSTEM,
-            messages=[{"role": "user", "content": content}],
-            output_format=NormalisedReport,
+            messages=[{"role": "system", "content": SYSTEM},
+                      {"role": "user", "content": free_text or "(photo only, no text)"}],
+            response_format={"type": "json_schema", "json_schema": {
+                "name": "normalised_report", "schema": NormalisedReport.model_json_schema()}},
+            temperature=0,
         )
-        return resp.parsed_output
+        return NormalisedReport.model_validate_json(resp.choices[0].message.content)
 
 
 _POSITIVE = {"sewage": "sewage_smell", "smell": "sewage_smell", "foam": "grey_foam",
@@ -114,4 +113,4 @@ class StubNormaliser:
 
 
 def get_normaliser() -> Normaliser:
-    return ClaudeNormaliser() if settings.anthropic_api_key else StubNormaliser()
+    return GroqNormaliser() if settings.groq_api_key else StubNormaliser()

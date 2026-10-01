@@ -75,7 +75,7 @@ lists every variable with an empty value.
 | `EXPORT_PSEUDONYM_KEY` | Keying observer pseudonyms in research exports; exports refuse to run without it |
 | `CLINICAL_CORE_API_TOKEN` | The clinical service's `public_health` token |
 | `*_DB_PASSWORD`, `DATABASE_URL`, … | One credential per database role (below) |
-| `VAPID_*`, `MEDIA_S3_*`, `ANTHROPIC_API_KEY` | Push notifications, photo storage, the report normaliser |
+| `VAPID_*`, `MEDIA_S3_*`, `GROQ_API_KEY` | Push notifications, photo storage, the report normaliser |
 
 ## Least privilege in the database
 
@@ -102,7 +102,7 @@ API reads are not audited beyond the server log. This is a pilot task.
   sign-off needs an officer, so a false report can shift a belief but cannot confirm an
   episode. The pilot adds citizen login (Keycloak) and rate limiting.
 - **No rate limiting.** `POST /ingest/report/propose` calls a paid model when
-  `ANTHROPIC_API_KEY` is set; put it behind a rate limit before a public deployment.
+  `GROQ_API_KEY` is set; put it behind a rate limit before a public deployment.
 - **Photos are not screened automatically.** They are withheld from every public read
   instead (see [PRIVACY.md](PRIVACY.md)).
 - **TLS** is the deployment's job (a reverse proxy in front of `api` and `web`); the

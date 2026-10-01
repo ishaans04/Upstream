@@ -4,7 +4,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     database_url: str
     catchment_id: str = "catch-1"
-    anthropic_api_key: str = ""
+    groq_api_key: str = ""
     hapi_base_url: str = "http://hapi:8080/fhir"
     media_s3_endpoint: str = ""
     media_s3_bucket: str = "upstream-media"
