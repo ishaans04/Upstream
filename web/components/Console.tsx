@@ -114,10 +114,6 @@ export function Console({ network, episode, timeline, loadSnapshot, initialIndex
             <NetworkMap network={network} snapshot={snap} evidence={rows} />
             <BeliefSlider timeline={timeline} index={index} fingerprint={snap?.fingerprint ?? timeline[index]?.fingerprint ?? null} onChange={setIndex} />
           </div>
-          <div className="card">
-            <div className="card-head"><h2>Exposure windows</h2><span className="aside">80% credible window per zone, local time</span></div>
-            {snap && <ExposureTimeline zones={zones} at={snap.ts} origin={episode.opened_at} />}
-          </div>
         </div>
         <div className="col">
           {aside}
@@ -129,6 +125,11 @@ export function Console({ network, episode, timeline, loadSnapshot, initialIndex
             <div className="card-head"><h2>Next best sample</h2><span className="aside">chosen to separate the suspects</span></div>
             {snap && <ProbeCard candidates={snap.probe_candidates} network={network} isPast={index !== last} />}
           </div>
+          <details className="card fold">
+            <summary className="card-head"><h2>Exposure windows</h2><span className="aside">80% credible window per zone, local time</span>
+              <svg className="chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5L6 8l3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg></summary>
+            {snap && <ExposureTimeline zones={zones} at={snap.ts} origin={episode.opened_at} />}
+          </details>
         </div>
       </div>
 

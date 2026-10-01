@@ -184,6 +184,16 @@ p { margin: 0; }
 .card-head .ic { width: 18px; height: 18px; color: var(--muted); align-self: center; flex: none; }
 .card-head h2 { font-size: 15px; }
 .card-head .aside { margin-left: auto; color: var(--faint); font: 400 11px/1.2 var(--mono); }
+/* A card that folds: the whole head is the toggle, the chevron says which way it goes. */
+.fold > summary { list-style: none; cursor: pointer; margin-bottom: 0; }
+.fold > summary::-webkit-details-marker { display: none; }
+.fold[open] > summary { margin-bottom: 12px; }
+.fold > summary h2 { white-space: nowrap; }
+.fold > summary .aside { text-align: right; }
+.fold .chev { width: 14px; height: 14px; color: var(--muted); align-self: center; flex: none; transition: transform 0.15s; }
+.fold[open] .chev { transform: rotate(180deg); }
+.fold > summary:hover .chev { color: var(--ochre-2); }
+@media (prefers-reduced-motion: reduce) { .fold .chev { transition: none; } }
 
 .badge {
   display: inline-flex; align-items: center; gap: 7px; padding: 4px 10px; border-radius: 999px;
